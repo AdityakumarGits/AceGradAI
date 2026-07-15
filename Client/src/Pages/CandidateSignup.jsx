@@ -1,4 +1,42 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 const CandidateSignup = () => {
+  const navigate=useNavigate();
+  const [fullname,setFullname]=useState("");
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [confirmPassword,setconfirmPassword]=useState("");
+  const [loading,setLoading]=useState(false);
+ // const [showPassword,setShowPassowrd]=useState(false);
+
+  const handleSignup=async (e)=>{
+      e.preventDefault();
+
+  if(!fullname || !email || !password || !confirmPassword){
+     alert("please fill all fields");
+     return ;
+  }
+if (password !== confirmPassword) {
+  alert("Passwords do not match");
+  return;
+}
+try {
+  setLoading(true);
+   const response=await axios.post("http://localhost:5000/api/v1/auth/signup",
+    {fullname,email,password,role: "candidate"}) 
+     console.log(response.data);
+     alert("Signup Successful");
+
+navigate("/candidatelogin");
+     
+} catch (error) {
+  console.log(error.response?.data);
+  alert(error.response?.data?.message || "Signup failed");
+    } finally {
+      setLoading(false);
+}
+  }
   return (
     //  <div className="min-h-screen  bg-[#070f2b] flex items-center justify-center p-6">
     <div className="relative h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] flex items-center justify-center p-6">
@@ -16,7 +54,8 @@ const CandidateSignup = () => {
         </div>
 
         {/* Form */}
-        <form className="space-y-5">
+        <form 
+        className="space-y-5">
           {/* Full Name */}
           <div>
             <label className="block text-sm font-medium text-[#eaecf0] mb-2 ">
@@ -24,9 +63,12 @@ const CandidateSignup = () => {
             </label>
 
             <input
+            required
               type="text"
               placeholder="John Doe"
-              className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
+              value={fullname}
+               onChange={(e) => setFullname(e.target.value)}
+              className="w-full rounded-xl border  bg-gray-300 px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
           </div>
 
@@ -37,9 +79,12 @@ const CandidateSignup = () => {
             </label>
 
             <input
+            required
               type="email"
+              value={email}
               placeholder="example@email.com"
-              className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
+               onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-xl border  bg-gray-300  px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
           </div>
 
@@ -50,9 +95,12 @@ const CandidateSignup = () => {
             </label>
 
             <input
+            required
               type="password"
+              value={password}
+               onChange={(e) => setPassword(e.target.value)}
               placeholder="********"
-              className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
+              className="w-full rounded-xl border  bg-gray-300  px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
           </div>
 
@@ -63,25 +111,31 @@ const CandidateSignup = () => {
             </label>
 
             <input
+            required
               type="password"
+              value={confirmPassword}
+               onChange={(e) => setconfirmPassword(e.target.value)}
               placeholder="********"
-              className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
+              className="w-full rounded-xl border  bg-gray-300  px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
           </div>
 
           {/* Signup Button */}
           <button
-            type="button"
+            type="submit"
+            onClick={handleSignup}
+              disabled={loading}
             className="w-full rounded-xl py-3 bg-gradient-to-r from-[#d90000]  to-red-700 hover:from-red-700  hover:to-[#d90000] transition-all duration-300 font-semibold shadow-lg hover:shadow-red-500/30"
+            
           >
-            Create Account
+            {loading ? "Creating Account..." : "Create Account"}
           </button>
         </form>
 
         {/* Login Link */}
         <div className="mt-6 text-center text-sm text-[#eaecf0] ">
           Already have an account?
-          <button
+            <button onClick={() => navigate("/candidatelogin")}
             type="button"
             className="ml-2 font-semibold text-indigo-600 hover:text-[#d90000]"
           >
@@ -90,7 +144,7 @@ const CandidateSignup = () => {
         </div>
         <div className="mt-2 text-center text-sm text-[#eaecf0]">
           Signup as Company
-          <button
+          <button onClick={() => navigate("/companySignup")}
             type="button"
             className="ml-2 font-semibold text-indigo-600 hover:text-[#d90000]"
           >

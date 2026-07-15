@@ -1,8 +1,78 @@
-
 //import { Mail, Lock } from "lucide-react";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
 const CandidateLogin = () => {
+  const navigate = useNavigate();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [forgetPassword,setforgetPassword]=useState("");
+  const [loading, setLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      return alert("input field are required");
+    }
+
+    try {
+      setLoading(true);
+      const response = await axios.post(
+        "http://localhost:5000/api/v1/auth/login",
+        {
+          email,
+          password,
+        },
+      );
+      const { token, 
+        data :{user},
+       } = response.data;
+     user === undefined
+     JSON.stringify(undefined)
+     console.log("Token:", token);
+     console.log("User:", user);
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+
+      console.log("Login Response:", response.data);
+      alert("Login Successful");
+      navigate("/");
+    } catch (error) {
+      console.log(error);
+      alert(error.response?.data?.message || "login failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const handleForgotPassword = async () => {
+  if (!email) {
+    return alert("Please enter your email address first.");
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await axios.post(
+      "http://localhost:5000/api/v1/auth/forgot-password",
+      {
+        email,
+      }
+    );
+
+    alert(response.data.message || "Password reset link sent to your email.");
+  } catch (error) {
+    console.error(error);
+    alert(error.response?.data?.message || "Failed to send reset link.");
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
-     //  <div className="min-h-screen  bg-[#070f2b] flex items-center justify-center p-6">
+    //  <div className="min-h-screen  bg-[#070f2b] flex items-center justify-center p-6">
     <div className="relative h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] flex items-center justify-center p-6">
       {/* Background Effects */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-[#d90000]/20 rounded-full blur-[150px]" />
@@ -13,27 +83,29 @@ const CandidateLogin = () => {
       <div className="relative w-full max-w-md rounded-3xl bg-[#0d1538]/90 backdrop-blur-xl shadow-2xl border border-white/10 p-8 shadow-[0_0_50px_rgba(0,0,0,0.6)]">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-indigo-400 bg-clip-text text-transparent">Login as Canidate</h1>
-          <p className="text-[#eaecf0] mt-2">Login up to get started</p>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-500 to-indigo-400 bg-clip-text text-transparent">
+            Login as Candidate
+          </h1>
+          <p className="text-[#eaecf0] mt-2">Log in to get started</p>
         </div>
 
         {/* Form */}
-        <form className="space-y-5">
-          
-
+        <form onSubmit={handleLogin} className="space-y-5">
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-[#eaecf0]  mb-2">
               Email
             </label>
-             
+
             <input
               type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+              }}
               placeholder="example@email.com"
               className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
-           
-            
           </div>
 
           {/* Password */}
@@ -44,26 +116,30 @@ const CandidateLogin = () => {
 
             <input
               type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+              }}
               placeholder="********"
               className="w-full rounded-xl border  bg-white px-4 py-3 outline-none hover:border-[#d90000] border-2 transition"
             />
           </div>
-       <div className="flex justify-end">
-    <button
-        type="button"
-        className="text-sm text-indigo-400 hover:text-red-500 transition"
-    >
-        Forgot Password?
-    </button>
-</div>
-         
+          <div className="flex justify-end">
+            <button
+              type="button"
+              className="text-sm text-indigo-400 hover:text-red-500 transition"
+            >
+              Forgot Password?
+            </button>
+          </div>
 
           {/* login Button */}
           <button
-            type="button"
+            type="submit"
+            disabled={loading}
             className="w-full rounded-xl py-3 bg-gradient-to-r from-[#d90000]  to-red-700 hover:from-red-700  hover:to-[#d90000] transition-all duration-300 font-semibold shadow-lg hover:shadow-red-500/30"
           >
-            Login
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
 
@@ -71,6 +147,7 @@ const CandidateLogin = () => {
         <div className="mt-6 text-center text-sm text-[#eaecf0] ">
           Don't have an account?
           <button
+            onClick={() => navigate("/candidatesignup")}
             type="button"
             className="ml-2 font-semibold text-indigo-600 hover:text-[#d90000]"
           >
@@ -80,6 +157,7 @@ const CandidateLogin = () => {
         <div className="mt-2 text-center text-sm text-[#eaecf0]">
           Login as Company
           <button
+            onClick={() => navigate("/companylogin")}
             type="button"
             className="ml-2 font-semibold  text-indigo-600 hover:text-[#d90000]"
           >
@@ -89,7 +167,6 @@ const CandidateLogin = () => {
       </div>
     </div>
   );
-  
-}
+};
 
-export default CandidateLogin
+export default CandidateLogin;

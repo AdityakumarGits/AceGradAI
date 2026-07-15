@@ -1,13 +1,73 @@
+import axios from "axios";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 const CompanyLogin = () => {
+  const navigate=useNavigate();
+  const [email,setEmail]=useState("");
+  const [password,setPassword]=useState("");
+  const [forgetPassword,setforgetPassword]=useState("");
+  const[loading,setLoading]=useState(false);
+
+   const handleLogin= async(e) => {
+    e.preventDefault();
+
+    if(!email || !password){
+      return alert("Required Input field");
+    }
+    try {
+      setLoading(true);
+      const response=await axios.post("http://localhost:5000/api/v1/auth/login",{
+        email,
+        password
+      })
+       const { token, 
+        data :{user},
+       } = response.data;
+        console.log("Token:", token);
+     console.log("User:", user);
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
+       console.log("Login Response:", response.data);
+      alert("Login Successful");
+      navigate("/");
+    } catch (error) {
+        console.log(error);
+      alert(error.response?.data?.message || "login failed");
+    }finally{
+      setLoading(false);
+    }
+   }
+   const handleForgotPassword = async () => {
+  if (!email) {
+    return alert("Please enter your email address first.");
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await axios.post(
+      "http://localhost:5000/api/v1/auth/forgot-password",
+      {
+        email,
+      }
+    );
+
+    alert(response.data.message || "Password reset link sent to your email.");
+  } catch (error) {
+    console.error(error);
+    alert(error.response?.data?.message || "Failed to send reset link.");
+  } finally {
+    setLoading(false);
+  }
+};
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#FAF7F3] via-[#F0E4D3] to-[#DCC5B2] flex items-center justify-center p-6">
       {/* Background Glow */}
       <div className="absolute -top-40 -left-40 w-[450px] h-[450px] rounded-full bg-[#D9A299]/40 blur-[140px]" />
-
       <div className="absolute -bottom-40 -right-40 w-[450px] h-[450px] rounded-full bg-[#DCC5B2]/60 blur-[140px]" />
-
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] rounded-full bg-white/20 blur-[180px]" />
-
+      
       {/* Login Card */}
       <div className="relative w-full max-w-md rounded-3xl border border-white/50 bg-white/35 backdrop-blur-2xl shadow-[0_20px_80px_rgba(0,0,0,0.12)] p-8 transition-all duration-500 hover:shadow-[0_20px_100px_rgba(217,162,153,0.35)]">
 
@@ -23,7 +83,8 @@ const CompanyLogin = () => {
         </div>
 
         {/* Login Form */}
-        <form className="space-y-5">
+        <form onSubmit={handleLogin}
+          className="space-y-5">
 
           {/* Email */}
           <div>
@@ -33,6 +94,8 @@ const CompanyLogin = () => {
 
             <input
               type="email"
+              value={email}
+              onClick={(e)=>{setEmail(e.target.value)}}
               placeholder="john@company.com"
               className="w-full rounded-xl bg-white/70 border border-white/60 px-4 py-3 text-gray-700 placeholder:text-gray-400 outline-none backdrop-blur-md transition-all duration-300 focus:border-[#D9A299] focus:ring-4 focus:ring-[#D9A299]/20"
             />
@@ -46,6 +109,8 @@ const CompanyLogin = () => {
 
             <input
               type="password"
+              value={password}
+              onClick={(e)=>{setPassword(e.target.value)}}
               placeholder="••••••••"
               className="w-full rounded-xl bg-white/70 border border-white/60 px-4 py-3 text-gray-700 placeholder:text-gray-400 outline-none backdrop-blur-md transition-all duration-300 focus:border-[#D9A299] focus:ring-4 focus:ring-[#D9A299]/20"
             />
@@ -54,7 +119,9 @@ const CompanyLogin = () => {
           {/* Forgot Password */}
           <div className="flex justify-end">
             <button
-              type="button"
+              type="submit"
+              value={forgetPassword}
+              onClick={(e)=>{setforgetPassword(e.target.value)}}
               className="text-sm font-medium text-[#C98772] hover:text-[#B46A54]"
             >
               Forgot Password?
@@ -63,7 +130,7 @@ const CompanyLogin = () => {
 
           {/* Login Button */}
           <button
-            type="button"
+            type="submit"
             className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#D9A299] via-[#C98772] to-[#B46A54] py-3 font-semibold text-white shadow-lg transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_10px_40px_rgba(217,162,153,0.45)]"
           >
             <span className="relative z-10">
@@ -78,7 +145,8 @@ const CompanyLogin = () => {
         <div className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?
           <button
-            type="button"
+            type="submit"
+            onClick={()=>{navigate('/companysignup')}} 
             className="ml-2 font-semibold text-[#C98772] hover:text-[#B46A54]"
           >
             Sign Up
