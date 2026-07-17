@@ -6,12 +6,11 @@ import CandidateLogin from "./Pages/CandidateLogin";
 import CompanySignup from "./Pages/CompanySignup";
 import CompanyLogin from "./Pages/CompanyLogin";
 import ForgetPassword from "./Pages/ForgetPassword";
-import { CandidateDashboard } from "./Pages/CandidateDashboard";
+import CandidateDashboard from "./Pages/candidateDashboard/CandidateDashboard";
 import CompanyDashboard from "./Pages/CompanyDashboard";
-import Analytics from "./Pages/Analytics";
 import Contact from "./Pages/Contact";
-import Interview from "./Pages/Interview";
-//import Features from "./Pages/Features";
+import StartInterview from "./Pages/StartInterview/StartInterview";
+
 
 const App = () => {
   return (
@@ -28,11 +27,10 @@ const App = () => {
       <Route path="/forget-password" element={<ForgetPassword />} />
 
       {/* Dashboard */}
-      <Route path="/candidatedashboard" element={<CandidateDashboard />} />
+      <Route path="/candidatedashboard" element={<CandidateDashboard/>}/>
+      <Route path="/startinterview" element={<StartInterview/>}/>
       <Route path="/companydashboard" element={<CompanyDashboard />} />
-      <Route path="/analytics" element={<Analytics />} />
-      <Route path="/interview" element={<Interview/>}/> 
-      {/* <Route path="/features" element={<Features />}/> */}
+  
 
       {/* Contact Page */}
       <Route path="/contact" element={<Contact />} />

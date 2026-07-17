@@ -46,7 +46,7 @@ const Hero = () => {
         {/* Buttons */}
         <div className="mt-4 flex flex-col items-center justify-center gap-4 sm:flex-row">
 
-          <Link to ="/interview" className="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#d90000] to-red-700 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(217,0,0,0.4)]">
+          <Link to ="/candidatedashboard" className="group flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#d90000] to-red-700 px-8 py-4 font-semibold text-white shadow-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(217,0,0,0.4)]">
 
             Start Practicing Free
 
