@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import { companyToast } from "../utils/toast";
 const CompanySignup = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -14,11 +14,11 @@ const CompanySignup = () => {
   const handleSignup = async (e) => {
     e.preventDefault();
 
-    if (!fullname || !email || !password || !confirmPassword || !otp) {
-      return alert("Input field are required");
+    if (!fullname || !email || !password || !confirmPassword ) {
+      return companyToast.error("Input field are required");
     }
     if (password !== confirmPassword) {
-      alert("Passwords do not match");
+      companyToast.error("Passwords do not match");
       return;
     }
 
@@ -35,19 +35,19 @@ const CompanySignup = () => {
         },
          );
         console.log(response.data);
-     alert("Signup Successful");
+     companyToast.success("Signup Successful");
     navigate("/");
      
     } catch (error) {
         console.log(error.response?.data);
-  alert(error.response?.data?.message || "Signup failed");
+  companyToast.error(error.response?.data?.message || "Signup failed");
     } finally {
       setLoading(false);
     }
   };
   const handleSendOtp = async () => {
   if (!email) {
-    return alert("Please enter your company email first.");
+    return companyToast.error("Please enter your company email first.");
   }
 
   try {
@@ -56,9 +56,9 @@ const CompanySignup = () => {
       { email }
     );
 
-    alert(response.data.message);
+    companyToast.error(response.data.message);
   } catch (error) {
-    alert(error.response?.data?.message || "Failed to send OTP");
+    companyToast.error(error.response?.data?.message || "Failed to send OTP");
   }
 };
 
@@ -157,7 +157,7 @@ const CompanySignup = () => {
 
             <div className="flex gap-3">
               <input
-              required
+            
                 type="text"
                 value={otp}
                 onChange={(e)=>{setOpt(e.target.value)}}

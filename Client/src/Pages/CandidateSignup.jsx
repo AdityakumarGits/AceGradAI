@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { candidateToast } from "../utils/toast";
 const CandidateSignup = () => {
   const navigate=useNavigate();
   const [fullname,setFullname]=useState("");
@@ -14,11 +15,11 @@ const CandidateSignup = () => {
       e.preventDefault();
 
   if(!fullname || !email || !password || !confirmPassword){
-     alert("please fill all fields");
+     candidateToast.error("please fill all fields");
      return ;
   }
 if (password !== confirmPassword) {
-  alert("Passwords do not match");
+  candidateToast.error("Passwords do not match");
   return;
 }
 try {
@@ -26,13 +27,13 @@ try {
    const response=await axios.post("http://localhost:5000/api/v1/auth/signup",
     {fullname,email,password,role: "candidate"}) 
      console.log(response.data);
-     alert("Signup Successful");
+     candidateToast.success("Signup Successful");
 
 navigate("/candidatelogin");
      
 } catch (error) {
   console.log(error.response?.data);
-  alert(error.response?.data?.message || "Signup failed");
+  candidateToast.error(error.response?.data?.message || "Signup failed");
     } finally {
       setLoading(false);
 }

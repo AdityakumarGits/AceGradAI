@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-
+import { candidateToast } from "../utils/toast";
 const CandidateLogin = () => {
   const navigate = useNavigate();
 
@@ -27,29 +27,25 @@ const CandidateLogin = () => {
           password,
         },
       );
-      const { token, 
-        data :{user},
-       } = response.data;
-     user === undefined
-     JSON.stringify(undefined)
-     console.log("Token:", token);
+      const token = response.data?.token;
+      const user = response.data?.data?.user;
      console.log("User:", user);
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
 
       console.log("Login Response:", response.data);
-      alert("Login Successful");
+      candidateToast.success("Login Successful");
       navigate("/");
     } catch (error) {
       console.log(error);
-      alert(error.response?.data?.message || "login failed");
+      candidateToast.error(error.response?.data?.message || "login failed");
     } finally {
       setLoading(false);
     }
   };
   const handleForgotPassword = async () => {
   if (!email) {
-    return alert("Please enter your email address first.");
+    return candidateToast.error("Please enter your email address first.");
   }
 
   try {
@@ -62,10 +58,10 @@ const CandidateLogin = () => {
       }
     );
 
-    alert(response.data.message || "Password reset link sent to your email.");
+    candidateToast.error(response.data.message || "Password reset link sent to your email.");
   } catch (error) {
     console.error(error);
-    alert(error.response?.data?.message || "Failed to send reset link.");
+    candidateToast.error(error.response?.data?.message || "Failed to send reset link.");
   } finally {
     setLoading(false);
   }
@@ -98,6 +94,7 @@ const CandidateLogin = () => {
             </label>
 
             <input
+            required
               type="email"
               value={email}
               onChange={(e) => {
@@ -115,6 +112,7 @@ const CandidateLogin = () => {
             </label>
 
             <input
+            required
               type="password"
               value={password}
               onChange={(e) => {
@@ -125,8 +123,9 @@ const CandidateLogin = () => {
             />
           </div>
           <div className="flex justify-end">
-            <button
-              type="button"
+            <button onClick={handleForgotPassword}
+              type="submit"
+              onClick={()=>{navigate("/forget-password")}}
               className="text-sm text-indigo-400 hover:text-red-500 transition"
             >
               Forgot Password?

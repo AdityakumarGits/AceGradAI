@@ -1,18 +1,19 @@
 import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { companyToast } from "../utils/toast";
 const CompanyLogin = () => {
   const navigate=useNavigate();
   const [email,setEmail]=useState("");
   const [password,setPassword]=useState("");
-  const [forgetPassword,setforgetPassword]=useState("");
+ // const [forgetPassword,setforgetPassword]=useState("");
   const[loading,setLoading]=useState(false);
 
    const handleLogin= async(e) => {
     e.preventDefault();
 
     if(!email || !password){
-      return alert("Required Input field");
+    return companyToast.error("Email and Password are required");
     }
     try {
       setLoading(true);
@@ -28,18 +29,18 @@ const CompanyLogin = () => {
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(user));
        console.log("Login Response:", response.data);
-      alert("Login Successful");
+      companyToast.success("Login Successful");
       navigate("/");
     } catch (error) {
         console.log(error);
-      alert(error.response?.data?.message || "login failed");
+      companyToast.error(error.response?.data?.message || "login failed");
     }finally{
       setLoading(false);
     }
    }
    const handleForgotPassword = async () => {
   if (!email) {
-    return alert("Please enter your email address first.");
+    return companyToast.error("Please enter your email address first.");
   }
 
   try {
@@ -52,10 +53,10 @@ const CompanyLogin = () => {
       }
     );
 
-    alert(response.data.message || "Password reset link sent to your email.");
+    companyToast.success(response.data.message || "Password reset link sent to your email.");
   } catch (error) {
     console.error(error);
-    alert(error.response?.data?.message || "Failed to send reset link.");
+    companyToast.error(error.response?.data?.message || "Failed to send reset link.");
   } finally {
     setLoading(false);
   }
@@ -93,9 +94,10 @@ const CompanyLogin = () => {
             </label>
 
             <input
+            required
               type="email"
               value={email}
-              onClick={(e)=>{setEmail(e.target.value)}}
+              onChange={(e)=>{setEmail(e.target.value)}}
               placeholder="john@company.com"
               className="w-full rounded-xl bg-white/70 border border-white/60 px-4 py-3 text-gray-700 placeholder:text-gray-400 outline-none backdrop-blur-md transition-all duration-300 focus:border-[#D9A299] focus:ring-4 focus:ring-[#D9A299]/20"
             />
@@ -108,9 +110,10 @@ const CompanyLogin = () => {
             </label>
 
             <input
+            required
               type="password"
               value={password}
-              onClick={(e)=>{setPassword(e.target.value)}}
+              onChange={(e)=>{setPassword(e.target.value)}}
               placeholder="••••••••"
               className="w-full rounded-xl bg-white/70 border border-white/60 px-4 py-3 text-gray-700 placeholder:text-gray-400 outline-none backdrop-blur-md transition-all duration-300 focus:border-[#D9A299] focus:ring-4 focus:ring-[#D9A299]/20"
             />
@@ -119,9 +122,9 @@ const CompanyLogin = () => {
           {/* Forgot Password */}
           <div className="flex justify-end">
             <button
-              type="submit"
-              value={forgetPassword}
-              onClick={(e)=>{setforgetPassword(e.target.value)}}
+               type="button"
+             onClick={handleForgotPassword}
+              disabled={loading}
               className="text-sm font-medium text-[#C98772] hover:text-[#B46A54]"
             >
               Forgot Password?
@@ -131,10 +134,11 @@ const CompanyLogin = () => {
           {/* Login Button */}
           <button
             type="submit"
+            disabled={loading}
             className="group relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-[#D9A299] via-[#C98772] to-[#B46A54] py-3 font-semibold text-white shadow-lg transition-all duration-500 hover:scale-[1.02] hover:shadow-[0_10px_40px_rgba(217,162,153,0.45)]"
           >
             <span className="relative z-10">
-              Login
+               {loading ? "Logging in..." : "Login"}
             </span>
 
             <span className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-700 group-hover:translate-x-full"></span>
@@ -145,7 +149,7 @@ const CompanyLogin = () => {
         <div className="mt-6 text-center text-sm text-gray-600">
           Don't have an account?
           <button
-            type="submit"
+            type="button"
             onClick={()=>{navigate('/companysignup')}} 
             className="ml-2 font-semibold text-[#C98772] hover:text-[#B46A54]"
           >
