@@ -1,31 +1,97 @@
 // src/pages/StartInterview/QuestionDisplay.jsx
-import React from 'react';
+
+import React from "react";
+import { MessageSquareText, Lightbulb } from "lucide-react";
 
 export default function QuestionDisplay({ questionText, index }) {
   return (
-    <div className="bg-slate-800/60 border border-slate-800 rounded-2xl p-8 flex flex-col justify-between shadow-xl relative overflow-hidden backdrop-blur-sm">
-      <div className="space-y-6">
-        <div className="flex items-center space-x-2 text-xs font-medium text-slate-400 uppercase tracking-widest">
-          <span>📝</span> <span>Prompt Context Target</span>
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 backdrop-blur-xl">
+
+      {/* Background Glow */}
+
+      <div className="absolute -top-20 -left-20 h-56 w-56 rounded-full bg-[#d90000]/20 blur-[120px]" />
+
+      <div className="absolute -bottom-20 right-0 h-64 w-64 rounded-full bg-indigo-500/20 blur-[140px]" />
+
+      {/* Top Gradient */}
+
+      <div className="h-1 bg-gradient-to-r from-[#d90000] via-red-500 to-indigo-500" />
+
+      <div className="relative p-8">
+
+        {/* Header */}
+
+        <div className="flex items-center gap-3">
+
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d90000] to-indigo-600 shadow-lg">
+
+            <MessageSquareText className="text-white" size={22} />
+
+          </div>
+
+          <div>
+
+            <p className="text-xs uppercase tracking-[3px] text-[#d90000] font-semibold">
+              Interview Question
+            </p>
+
+            <h3 className="text-lg font-semibold text-white">
+              AI Generated Prompt
+            </h3>
+
+          </div>
+
         </div>
-        
-        {/* Main Prompt Text Container */}
-        <div className="space-y-4">
-          <span className="text-5xl font-extrabold text-indigo-500/30 font-mono block select-none">Q{index + 1}.</span>
-          <p className="text-xl font-medium text-slate-100 leading-relaxed tracking-wide">
+
+        {/* Question */}
+
+        <div className="mt-10">
+
+          <span className="block text-6xl font-extrabold bg-gradient-to-r from-[#d90000]/30 to-indigo-400/30 bg-clip-text text-transparent select-none">
+            Q{index + 1}
+          </span>
+
+          <p className="mt-6 text-2xl leading-10 font-medium text-[#eaecf0]">
             {questionText}
           </p>
+
         </div>
+
       </div>
 
-      {/* AI Assistant Context Note Footer */}
-      <div className="mt-8 pt-6 border-t border-slate-700/40 bg-slate-900/30 -mx-8 -mb-8 p-6 flex items-start space-x-3">
-        <span className="text-xl">💡</span>
-        <div className="text-xs text-slate-400 leading-normal">
-          <span className="text-indigo-400 font-semibold block mb-1">Evaluation Tips:</span>
-          Speak clearly and state your architectural choices plainly. Your performance models map deep logic trees, keyword accuracy, and contextual delivery speeds.
+      {/* Footer */}
+
+      <div className="relative border-t border-white/10 bg-[#030712]/50 px-8 py-6">
+
+        <div className="flex items-start gap-4">
+
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#d90000]/10">
+
+            <Lightbulb className="text-[#d90000]" size={24} />
+
+          </div>
+
+          <div>
+
+            <h4 className="font-semibold text-white">
+              AI Evaluation Tips
+            </h4>
+
+            <p className="mt-2 text-sm leading-7 text-[#eaecf0]/70">
+
+              Answer confidently with a clear structure. Explain your
+              thought process, justify technical decisions, and communicate
+              naturally. AceGrad AI evaluates clarity, technical accuracy,
+              confidence, and overall communication quality.
+
+            </p>
+
+          </div>
+
         </div>
+
       </div>
+
     </div>
   );
 }

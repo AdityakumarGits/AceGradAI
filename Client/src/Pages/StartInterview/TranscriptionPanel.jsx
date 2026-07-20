@@ -1,77 +1,147 @@
 // src/pages/StartInterview/TranscriptionPanel.jsx
-import React from 'react';
 
-export default function TranscriptionPanel({ 
-  transcribedText, 
-  setTranscribedText, 
-  isRecording, 
-  setIsRecording, 
+import React from "react";
+import {
+  Mic,
+  MicOff,
+  ArrowRight,
+  Send,
+} from "lucide-react";
+import { Link } from "react-router-dom";
+
+export default function TranscriptionPanel({
+  transcribedText,
+  setTranscribedText,
+  isRecording,
+  setIsRecording,
   onNext,
-  isLastQuestion 
+  isLastQuestion,
 }) {
-  
-  // Simulated speech mechanics handler toggles
+
   const toggleRecording = () => {
     if (!isRecording) {
       setIsRecording(true);
-      // Mock active live audio input simulation injection
-      setTranscribedText(prev => prev + (prev ? " " : "") + "[Simulated live speech engine picking up voice token matrices... Everything spoken shows instantly here.]");
+
+      setTranscribedText(
+        (prev) =>
+          prev +
+          (prev ? " " : "") +
+          "[Simulated live speech engine picking up voice token matrices... Everything spoken shows instantly here.]"
+      );
     } else {
       setIsRecording(false);
     }
   };
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 flex flex-col justify-between shadow-xl">
-      <div className="flex-1 flex flex-col space-y-4">
-        <div className="flex justify-between items-center">
-          <label className="text-xs font-medium text-slate-400 uppercase tracking-wider flex items-center space-x-2">
-            <span className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500 animate-pulse' : 'bg-slate-500'}`}></span>
-            <span>Real-time Audio Transcript Input</span>
-          </label>
+    <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 backdrop-blur-xl">
+
+      {/* Background Glow */}
+
+      <div className="absolute -top-16 right-0 h-60 w-60 rounded-full bg-indigo-500/20 blur-[120px]" />
+
+      <div className="absolute bottom-0 -left-10 h-48 w-48 rounded-full bg-[#d90000]/20 blur-[120px]" />
+
+      <div className="relative flex h-full flex-col p-8">
+
+        {/* Header */}
+
+        <div className="mb-6 flex items-center justify-between">
+
+          <div>
+
+            <p className="text-xs uppercase tracking-[3px] text-[#d90000] font-semibold">
+              Live Transcript
+            </p>
+
+            <h3 className="mt-2 text-xl font-bold text-white">
+              AI Speech Recognition
+            </h3>
+
+          </div>
+
           {isRecording && (
-            <span className="text-xs font-mono text-red-400 animate-pulse bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">
-              ● LIVE STREAMING
-            </span>
+            <div className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2">
+
+              <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+
+              <span className="text-xs font-semibold uppercase tracking-wider text-red-400">
+                Recording
+              </span>
+
+            </div>
           )}
+
         </div>
 
-        {/* Dynamic Transcriber Alphanumeric Sandbox Field */}
+        {/* Textarea */}
+
         <textarea
           value={transcribedText}
           onChange={(e) => setTranscribedText(e.target.value)}
-          placeholder="Click the microphone toggle button below to start tracking your answer. Alternatively, you can compose your points textually..."
-          className="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 text-sm leading-relaxed resize-none font-mono shadow-inner"
+          placeholder="Start speaking or type your answer here. AceGrad AI will evaluate your communication, confidence, and technical accuracy."
+          className="min-h-[340px] flex-1 rounded-2xl border border-white/10 bg-[#030712]/70 p-6 text-[#eaecf0] placeholder:text-[#eaecf0]/40 focus:border-[#d90000]/50 focus:outline-none focus:ring-2 focus:ring-[#d90000]/20 resize-none leading-8"
         />
+
+        {/* Footer */}
+
+        <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
+
+          {/* Recording Button */}
+
+          <button
+            onClick={toggleRecording}
+            className={`flex items-center gap-3 rounded-2xl px-7 py-4 font-semibold transition-all duration-300 ${
+              isRecording
+                ? "bg-gradient-to-r from-red-600 to-red-500 text-white shadow-[0_0_30px_rgba(220,38,38,.35)] animate-pulse"
+                : "bg-gradient-to-r from-[#d90000] to-indigo-600 text-white hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]"
+            }`}
+          >
+
+            {isRecording ? (
+              <>
+                <MicOff size={20} />
+                Stop Recording
+              </>
+            ) : (
+              <>
+                <Mic size={20} />
+                Start Recording
+              </>
+            )}
+
+          </button>
+
+          {/* Next Button */}
+
+          <Link to='/feedback'
+            onClick={onNext}
+            disabled={!transcribedText.trim()}
+            className={`flex items-center gap-3 rounded-2xl px-7 py-4 font-semibold transition-all duration-300 ${
+              transcribedText.trim()
+                ? "bg-gradient-to-r from-indigo-600 to-[#d90000] text-white hover:scale-105 hover:shadow-[0_0_35px_rgba(99,102,241,.35)]"
+                : "cursor-not-allowed border border-white/10 bg-white/5 text-[#eaecf0]/30"
+            }`}
+          >
+
+            {isLastQuestion ? (
+              <>
+                <Send size={20} />
+                Submit Interview
+              </>
+            ) : (
+              <>
+                Next Question
+                <ArrowRight size={20} />
+              </>
+            )}
+
+          </Link>
+
+        </div>
+
       </div>
 
-      {/* Action Controller Tray */}
-      <div className="mt-6 pt-4 border-t border-slate-700/60 flex items-center justify-between">
-        {/* Toggle Audio Button */}
-        <button
-          onClick={toggleRecording}
-          className={`flex items-center space-x-3 px-6 py-3 rounded-xl font-semibold text-sm transition-all shadow-md ${
-            isRecording 
-              ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20 animate-pulse' 
-              : 'bg-slate-900 border border-slate-700 text-slate-200 hover:bg-slate-700'
-          }`}
-        >
-          <span>{isRecording ? '🛑 Stop Recording' : '🎙️ Start Mic Capture'}</span>
-        </button>
-
-        {/* Next Question Control */}
-        <button
-          onClick={onNext}
-          disabled={!transcribedText.trim()}
-          className={`px-6 py-3 rounded-xl text-sm font-semibold transition shadow-md active:scale-95 ${
-            transcribedText.trim()
-              ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-600/20' 
-              : 'bg-slate-700 text-slate-500 cursor-not-allowed shadow-none'
-          }`}
-        >
-          {isLastQuestion ? 'Submit Interview 🏁' : 'Next Prompt →'}
-        </button>
-      </div>
     </div>
   );
 }

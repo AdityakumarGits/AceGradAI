@@ -9,6 +9,7 @@ import {
   Rocket,
   ArrowRight,
 } from "lucide-react";
+import { Link } from "react-router-dom";
 
 export default function OverviewSection({ setActiveTab }) {
   const stats = [
@@ -76,13 +77,13 @@ export default function OverviewSection({ setActiveTab }) {
 
             </p>
 
-            <button className="mt-8 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-8 py-4 font-semibold text-white transition duration-300 hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]">
+            <Link to='/startinterview' className="mt-8 flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-8 py-4 font-semibold text-white transition duration-300 hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]">
 
               <Rocket size={20} />
 
               Start Interview
 
-            </button>
+            </Link>
 
           </div>
 

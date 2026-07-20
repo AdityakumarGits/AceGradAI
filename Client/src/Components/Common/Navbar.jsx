@@ -47,17 +47,17 @@ const Navbar = () => {
         {/* Buttons */}
         <div className="flex items-center gap-4">
           <Link
-            to="/candidateSignup"
+            to="/candidatelogin"
             className="hidden md:block rounded-xl border border-indigo-500/30 bg-[#0d1538]/60 px-5 py-2.5 font-medium text-[#eaecf0] transition-all duration-300 hover:border-[#d90000] hover:bg-[#121d47]"
           >
-            Sign Up
+            Candidate Login
           </Link>
 
           <Link
-            to="/candidatelogin"
+            to="/companylogin"
             className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-[#d90000] to-red-700 px-6 py-2.5 font-semibold text-white shadow-lg transition duration-300 hover:scale-105 hover:shadow-[0_0_25px_rgba(217,0,0,0.45)]"
           >
-            <span className="relative z-10">Login</span>
+            <span className="relative z-10">Corporate Login</span>
 
             <span className="absolute inset-0 -translate-x-full bg-white/20 transition-transform duration-700 group-hover:translate-x-full"></span>
           </Link>
