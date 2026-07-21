@@ -1,6 +1,8 @@
-import { Link } from "react-router-dom";
+import { Link,  useNavigate } from "react-router-dom";
+
 
 const Navbar = () => {
+  const navigate=useNavigate()
   return (
     <nav className="fixed top-0 left-0 z-50 w-full px-6 py-5">
       <div className="mx-auto flex max-w-7xl items-center justify-between rounded-2xl border border-white/10 bg-[#0d1538]/70 backdrop-blur-2xl px-8 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.45)]">
@@ -10,8 +12,8 @@ const Navbar = () => {
             A
           </div>
 
-          <div>
-            <h1 className="text-2xl font-bold text-white">
+          <div >
+            <h1 className="text-2xl font-bold cursor-pointer text-white">
               AceGrad
               <span className="bg-gradient-to-r from-[#d90000] to-indigo-400 bg-clip-text text-transparent">
                 AI
