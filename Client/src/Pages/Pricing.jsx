@@ -67,10 +67,8 @@ const Pricing = () => {
       <div className="absolute bottom-0 right-0 h-[450px] w-[450px] rounded-full bg-indigo-600/20 blur-[180px]" />
 
       <div className="relative mx-auto max-w-7xl">
-
         {/* Heading */}
         <div className="text-center">
-
           <p className="font-semibold uppercase tracking-[4px] text-[#d90000]">
             Pricing
           </p>
@@ -78,35 +76,29 @@ const Pricing = () => {
           <h2 className="mt-4 text-4xl font-bold text-white md:text-5xl">
             Choose Your
             <span className="bg-gradient-to-r from-[#d90000] to-indigo-400 bg-clip-text text-transparent">
-              {" "}Perfect Plan
+              {" "}
+              Perfect Plan
             </span>
           </h2>
 
           <p className="mx-auto mt-6 max-w-3xl text-lg text-[#eaecf0]/70">
-            Start for free and upgrade anytime. Select the plan that
-            fits your interview preparation or hiring needs.
+            Start for free and upgrade anytime. Select the plan that fits your
+            interview preparation or hiring needs.
           </p>
-
         </div>
 
         {/* Cards */}
         <div className="mt-20 grid gap-8 lg:grid-cols-3">
-
           {plans.map((plan, index) => {
-
             const Icon = plan.icon;
 
             return (
-
               <div
                 key={index}
                 className={`relative rounded-3xl border ${
-                  plan.popular
-                    ? "border-[#d90000]"
-                    : "border-white/10"
+                  plan.popular ? "border-[#d90000]" : "border-white/10"
                 } bg-[#0d1538]/80 backdrop-blur-xl p-8 transition-all duration-500 hover:-translate-y-3 hover:shadow-[0_0_45px_rgba(217,0,0,0.25)]`}
               >
-
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-[#d90000] to-indigo-500 px-5 py-2 text-sm font-semibold text-white shadow-lg">
                     Most Popular
@@ -125,45 +117,26 @@ const Pricing = () => {
                   {plan.name}
                 </h3>
 
-                <p className="mt-3 text-[#eaecf0]/70">
-                  {plan.description}
-                </p>
+                <p className="mt-3 text-[#eaecf0]/70">{plan.description}</p>
 
                 <div className="mt-6">
-
                   <span className="text-5xl font-bold text-white">
                     {plan.price}
                   </span>
 
-                  <span className="text-[#eaecf0]/60">
-                    {plan.duration}
-                  </span>
-
+                  <span className="text-[#eaecf0]/60">{plan.duration}</span>
                 </div>
 
                 {/* Features */}
 
                 <div className="mt-8 space-y-4">
-
                   {plan.features.map((feature, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <Check size={18} className="text-[#d90000]" />
 
-                    <div
-                      key={i}
-                      className="flex items-center gap-3"
-                    >
-                      <Check
-                        size={18}
-                        className="text-[#d90000]"
-                      />
-
-                      <span className="text-[#eaecf0]/80">
-                        {feature}
-                      </span>
-
+                      <span className="text-[#eaecf0]/80">{feature}</span>
                     </div>
-
                   ))}
-
                 </div>
 
                 <button
@@ -171,15 +144,10 @@ const Pricing = () => {
                 >
                   {plan.button}
                 </button>
-
               </div>
-
             );
-
           })}
-
         </div>
-
       </div>
     </section>
   );

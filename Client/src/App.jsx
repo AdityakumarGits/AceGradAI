@@ -11,6 +11,7 @@ import CompanyDashboard from "./Pages/CompanyDashboard";
 import Contact from "./Pages/Contact";
 import StartInterview from "./Pages/StartInterview/StartInterview";
 import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
+import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
 
 
 
@@ -30,7 +31,8 @@ const App = () => {
 
       {/* Dashboard */}
       <Route path="/candidatedashboard" element={<CandidateDashboard/>}/>
-      <Route path="/startinterview" element={<StartInterview/>}/>
+      <Route path="/interviewsetup" element={<InterviewSetup/>}/>
+       <Route path="/startinterview" element={<StartInterview/>}/>
       <Route path="/companydashboard" element={<CompanyDashboard />} />
       <Route path="/feedback" element={<AIFeedbackReport/>}/>
   

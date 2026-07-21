@@ -1,12 +1,7 @@
 // src/pages/StartInterview/TranscriptionPanel.jsx
 
 import React from "react";
-import {
-  Mic,
-  MicOff,
-  ArrowRight,
-  Send,
-} from "lucide-react";
+import { Mic, MicOff, ArrowRight, Send } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function TranscriptionPanel({
@@ -17,7 +12,6 @@ export default function TranscriptionPanel({
   onNext,
   isLastQuestion,
 }) {
-
   const toggleRecording = () => {
     if (!isRecording) {
       setIsRecording(true);
@@ -26,7 +20,7 @@ export default function TranscriptionPanel({
         (prev) =>
           prev +
           (prev ? " " : "") +
-          "[Simulated live speech engine picking up voice token matrices... Everything spoken shows instantly here.]"
+          "[Simulated live speech engine picking up voice token matrices... Everything spoken shows instantly here.]",
       );
     } else {
       setIsRecording(false);
@@ -35,7 +29,6 @@ export default function TranscriptionPanel({
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 backdrop-blur-xl">
-
       {/* Background Glow */}
 
       <div className="absolute -top-16 right-0 h-60 w-60 rounded-full bg-indigo-500/20 blur-[120px]" />
@@ -43,13 +36,10 @@ export default function TranscriptionPanel({
       <div className="absolute bottom-0 -left-10 h-48 w-48 rounded-full bg-[#d90000]/20 blur-[120px]" />
 
       <div className="relative flex h-full flex-col p-8">
-
         {/* Header */}
 
         <div className="mb-6 flex items-center justify-between">
-
           <div>
-
             <p className="text-xs uppercase tracking-[3px] text-[#d90000] font-semibold">
               Live Transcript
             </p>
@@ -57,21 +47,17 @@ export default function TranscriptionPanel({
             <h3 className="mt-2 text-xl font-bold text-white">
               AI Speech Recognition
             </h3>
-
           </div>
 
           {isRecording && (
             <div className="flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2">
-
               <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
 
               <span className="text-xs font-semibold uppercase tracking-wider text-red-400">
                 Recording
               </span>
-
             </div>
           )}
-
         </div>
 
         {/* Textarea */}
@@ -86,7 +72,6 @@ export default function TranscriptionPanel({
         {/* Footer */}
 
         <div className="mt-8 flex items-center justify-between border-t border-white/10 pt-6">
-
           {/* Recording Button */}
 
           <button
@@ -97,7 +82,6 @@ export default function TranscriptionPanel({
                 : "bg-gradient-to-r from-[#d90000] to-indigo-600 text-white hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]"
             }`}
           >
-
             {isRecording ? (
               <>
                 <MicOff size={20} />
@@ -109,12 +93,12 @@ export default function TranscriptionPanel({
                 Start Recording
               </>
             )}
-
           </button>
 
           {/* Next Button */}
 
-          <Link to='/feedback'
+          <Link
+            to="/feedback"
             onClick={onNext}
             disabled={!transcribedText.trim()}
             className={`flex items-center gap-3 rounded-2xl px-7 py-4 font-semibold transition-all duration-300 ${
@@ -123,7 +107,6 @@ export default function TranscriptionPanel({
                 : "cursor-not-allowed border border-white/10 bg-white/5 text-[#eaecf0]/30"
             }`}
           >
-
             {isLastQuestion ? (
               <>
                 <Send size={20} />
@@ -135,13 +118,9 @@ export default function TranscriptionPanel({
                 <ArrowRight size={20} />
               </>
             )}
-
           </Link>
-
         </div>
-
       </div>
-
     </div>
   );
 }

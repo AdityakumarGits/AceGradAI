@@ -1,4 +1,4 @@
-// src/pages/AIFeedbackReport/AIFeedbackReport.jsx
+import {Link} from "react-router-dom";
 
 import React from "react";
 import {
@@ -77,10 +77,10 @@ export default function AIFeedbackReport() {
                 Download PDF
               </button>
 
-              <button className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-6 py-4 font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]">
+              <Link to='/candidatedashboard' className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-6 py-4 font-semibold text-white transition-all duration-300 hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]">
                 <LayoutDashboard size={18} />
                 Back to Dashboard
-              </button>
+              </Link>
             </div>
           </div>
         </header>
