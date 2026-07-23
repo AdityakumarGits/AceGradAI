@@ -12,6 +12,7 @@ import Contact from "./Pages/Contact";
 import StartInterview from "./Pages/StartInterview/StartInterview";
 import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
 import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
+import VerifyOTP from "./Pages/VerifyOTP";
 
 
 
@@ -24,6 +25,7 @@ const App = () => {
 
       {/* Auth */}
       <Route path="/candidatesignup" element={<CandidateSignup />} />
+      <Route path="/verifyotp" element={<VerifyOTP/>}/>
       <Route path="/candidatelogin" element={<CandidateLogin />} />
       <Route path="/companysignup" element={<CompanySignup />} />
       <Route path="/companylogin" element={<CompanyLogin />} />

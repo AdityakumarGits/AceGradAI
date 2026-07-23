@@ -5,7 +5,7 @@ import { candidateToast } from "../utils/toast";
 const CandidateSignup = () => {
   const navigate=useNavigate();
   const [fullname,setFullname]=useState("");
-  const [email,setEmail]=useState("");
+  const [email,setEmail]= useState("")
   const [password,setPassword]=useState("");
   const [confirmPassword,setconfirmPassword]=useState("");
   const [loading,setLoading]=useState(false);
@@ -22,14 +22,18 @@ if (password !== confirmPassword) {
   candidateToast.error("Passwords do not match");
   return;
 }
+   if (password.length < 8) {
+    candidateToast.error("Password must be at least 8 characters");
+     return;
+   }
 try {
   setLoading(true);
    const response=await axios.post("http://localhost:5000/api/v1/auth/signup",
     {fullname,email,password,role: "candidate"}) 
      console.log(response.data);
-     candidateToast.success("Signup Successful");
+    //  candidateToast.success("Verify");
 
-navigate("/candidatelogin");
+navigate("/verifyotp",{ state: { email } });
      
 } catch (error) {
   console.log(error.response?.data);
@@ -55,7 +59,7 @@ navigate("/candidatelogin");
         </div>
 
         {/* Form */}
-        <form 
+        <form onSubmit={handleSignup}
         className="space-y-5">
           {/* Full Name */}
           <div>
@@ -124,7 +128,7 @@ navigate("/candidatelogin");
           {/* Signup Button */}
           <button
             type="submit"
-            onClick={handleSignup}
+          
               disabled={loading}
             className="w-full rounded-xl py-3 bg-gradient-to-r from-[#d90000]  to-red-700 hover:from-red-700  hover:to-[#d90000] transition-all duration-300 font-semibold shadow-lg hover:shadow-red-500/30"
             
