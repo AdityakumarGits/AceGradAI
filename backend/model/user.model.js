@@ -17,12 +17,17 @@ const userSchema = new mongoose.Schema({
     password: {
         type: String,
         required: [true, "Password is required"],
-        minlength: [6, "Password must be at least 6 characters"]
+        minlength: [6, "Password must be at least 6 characters"],
+        select:false
     },
     role: {
         type: String,
         enum: ["candidate", "recruiter", "admin"], 
         default: "candidate" 
+    },
+    Verified:{
+        type:Boolean,
+        default:false,
     }
 }, { 
     timestamps: true // Fixed: Yeh automatic createdAt aur updatedAt fields handle karega
@@ -31,14 +36,13 @@ const userSchema = new mongoose.Schema({
 //  THE PRE-SAVE HOOK: Database mein save hone se pehle password encrypt hoga
 userSchema.pre("save", async function(next) {
     // Agar password modify nahi hua hai, toh aage badh jao
-    if (!this.isModified("password")) return next();
+    if (!this.isModified("password")) return ;
     
     try {
         // Password ko 10 salt rounds ke sath hash kar diya
         this.password = await bcrypt.hash(this.password, 10);
-       
     } catch (error) {
-        console.log(error);
+       next(error);
          // Kuch gadbad hui toh error ko humare central handler par fek diya
     }
 });

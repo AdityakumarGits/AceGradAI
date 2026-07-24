@@ -1,13 +1,5 @@
 import React, { useState } from "react";
-import {
-  LockKeyhole,
-  Mail,
-  ShieldCheck,
-  Lock,
-  Eye,
-  ArrowRight,
-  ArrowLeft,
-} from "lucide-react";
+import { LockKeyhole, Mail, ShieldCheck, Lock,  Eye,ArrowRight, ArrowLeft } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { candidateToast } from "../utils/toast";
