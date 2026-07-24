@@ -1,5 +1,5 @@
 import { Link,  useNavigate } from "react-router-dom";
-
+import logo from "../../assets/logo.png"
 
 const Navbar = () => {
   const navigate=useNavigate()
@@ -8,9 +8,13 @@ const Navbar = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between rounded-2xl border border-white/10 bg-[#0d1538]/70 backdrop-blur-2xl px-8 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.45)]">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-4 group">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#d90000] to-red-700 text-xl font-bold text-white shadow-[0_0_25px_rgba(217,0,0,0.45)] transition duration-300 group-hover:scale-110">
-            A
-          </div>
+  <div className="flex h-12 w-12 items-center justify-center rounded-xl shadow-[0_0_25px_rgba(217,0,0,0.45)] transition-all duration-300 group-hover:scale-110">
+    <img
+      src={logo}
+      alt="AceGrad AI Logo"
+      className="h-full w-full rounded-xl object-cover"
+    />
+  </div>
 
           <div >
             <h1 className="text-2xl font-bold cursor-pointer text-white">
