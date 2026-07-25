@@ -2,7 +2,7 @@ import axios from "axios";
 
 // Creating a global reusable network pipeline configuration instance
 const API = axios.create({
-  baseURL: "http://localhost:5000/api/v1", // Points directly to your completed Node.js API
+  baseURL:  import.meta.env.VITE_API_URL || "http://localhost:5000/api/v1", // Points directly to your completed Node.js API
   timeout: 10000, // Safe timeout barrier of 10 seconds
   headers: {
     "Content-Type": "application/json",
@@ -19,6 +19,16 @@ API.interceptors.request.use(
     return config;
   },
   (error) => {
+    return Promise.reject(error);
+  }
+);
+API.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/candidatelogin"; // ya jo bhi login route hai
+    }
     return Promise.reject(error);
   }
 );

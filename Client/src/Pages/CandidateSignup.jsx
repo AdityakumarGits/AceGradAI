@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+
+import API from "../services/api"
 import { candidateToast } from "../utils/toast";
 const CandidateSignup = () => {
   const navigate=useNavigate();
@@ -28,7 +29,7 @@ if (password !== confirmPassword) {
    }
 try {
   setLoading(true);
-   const response=await axios.post("http://localhost:5000/api/v1/auth/signup",
+   const response=await API.post("auth/signup",
     {fullname,email,password,role: "candidate"}) 
      console.log(response.data);
     //  candidateToast.success("Verify");

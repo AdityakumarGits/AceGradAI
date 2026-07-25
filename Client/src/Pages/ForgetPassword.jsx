@@ -3,7 +3,8 @@ import { LockKeyhole, Mail, ShieldCheck, Lock,  Eye,ArrowRight, ArrowLeft } from
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { candidateToast } from "../utils/toast";
-import axios from "axios";
+
+import API from "../services/api";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -23,7 +24,7 @@ const [resetLoading, setResetLoading] = useState(false);
     }
       try {
         setOtpLoading(true);
-        const otpResponse=await axios.post("http://localhost:5000/api/v1/auth/send-otp",{
+        const otpResponse=await API.post("auth/send-otp",{
           email
         })
         candidateToast.success("OTP sent to your email");
@@ -52,8 +53,8 @@ const [resetLoading, setResetLoading] = useState(false);
     }
        try {
         setResetLoading(true)
-      const response = await axios.post(
-        "http://localhost:5000/api/v1/auth/reset-password",
+      const response = await API.post(
+        "auth/reset-password",
         {
           email,
           otp,

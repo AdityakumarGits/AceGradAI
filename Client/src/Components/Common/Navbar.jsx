@@ -1,8 +1,27 @@
 import { Link,  useNavigate } from "react-router-dom";
 import logo from "../../assets/logo.png"
+import API from "../../services/api";
+import { useAuth } from "../../context/AuthContext"; // apna actual path lagao
 
 const Navbar = () => {
   const navigate=useNavigate()
+  const { user, logout } = useAuth();
+
+  const handleLogout=async()=>{
+    try {
+     await API.post("auth/logout");
+    } catch (error) {
+      console.error("Backend logout error, clearing local session anyway:", error);
+    }finally{
+       logout();
+     navigate("/", { replace: true });
+    
+    // Page reload taaki memory se state flush ho jaye aur routes secure ho sakein
+   
+    }
+  } 
+
+
   return (
     <nav className="fixed top-0 left-0 z-50 w-full px-6 py-5">
       <div className="mx-auto flex max-w-7xl items-center justify-between rounded-2xl border border-white/10 bg-[#0d1538]/70 backdrop-blur-2xl px-8 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.45)]">
@@ -51,13 +70,26 @@ const Navbar = () => {
         </div>
 
         {/* Buttons */}
-        <div className="flex items-center gap-4">
+        {/* <div className="text-white">
+  {user ? "USER LOGGED IN" : "NO USER"}
+</div> */}
+    <div className="flex items-center gap-4">
+        {user?(
+          <button 
+          onClick={handleLogout} 
+          type="button"
+           className="hidden md:block rounded-xl border border-indigo-500/30 bg-[#0d1538]/60 px-5 py-2.5 font-medium text-[#eaecf0] transition-all duration-300 hover:border-[#d90000] hover:bg-[#121d47]"
+           > Logout
+          </button>
+        ):(
+        
           <Link
             to="/candidatelogin"
             className="hidden md:block rounded-xl border border-indigo-500/30 bg-[#0d1538]/60 px-5 py-2.5 font-medium text-[#eaecf0] transition-all duration-300 hover:border-[#d90000] hover:bg-[#121d47]"
           >
             Candidate Login
           </Link>
+        )}
 
           <Link
             to="/companylogin"

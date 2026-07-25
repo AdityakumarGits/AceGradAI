@@ -1,10 +1,18 @@
 //import { Mail, Lock } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../services/api"
 import { candidateToast } from "../utils/toast";
+import { useAuth } from "../context/AuthContext";
+
+
+
+
+
+
 const CandidateLogin = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,8 +28,8 @@ const CandidateLogin = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post(
-        "http://localhost:5000/api/v1/auth/login",
+      const response = await API.post(
+        "auth/login",
         {
           email,
           password,
@@ -29,9 +37,8 @@ const CandidateLogin = () => {
       );
       const token = response.data?.token;
       const user = response.data?.data?.user;
-     console.log("User:", user);
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      console.log("User:", user);
+      login(token, user);
 
       console.log("Login Response:", response.data);
       candidateToast.success("Login Successful");
