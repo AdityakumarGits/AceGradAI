@@ -2,19 +2,33 @@ import React, { useState } from "react";
 import OverviewSection from "./OverviewSection";
 import HistorySection from "./HistorySection";
 import AnalyticsSection from "./AnalyticsSection";
+import API from "../../services/api";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext"; 
 
-import {
-  LayoutDashboard,
-  History,
-  BarChart3,
-  Flame,
-  LogOut,
-  UserCircle2,
-  Rocket,
-} from "lucide-react";
+
+import { LayoutDashboard, History, BarChart3, Flame, LogOut, UserCircle2, Rocket,} from "lucide-react";
 
 export default function CandidateDashboard() {
+    const navigate = useNavigate();
+  const { logout, user } = useAuth(); 
   const [activeTab, setActiveTab] = useState("overview");
+
+
+ const handleLogout=async()=>{
+    try {
+     await API.post("auth/logout");
+    } catch (error) {
+      console.error("Backend logout error, clearing local session anyway:", error);
+    }finally{
+       logout();
+     navigate("/", { replace: true });
+    
+    // Page reload taaki memory se state flush ho jaye aur routes secure ho sakein
+   
+    }
+  } 
+ 
 
   const renderSection = () => {
     switch (activeTab) {
@@ -104,13 +118,15 @@ export default function CandidateDashboard() {
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-white">John Doe</h4>
-
-                  <p className="text-xs text-[#eaecf0]/60">Candidate</p>
+                  <h4 className="font-semibold text-white">{user?.fullname}</h4>
+                   <p className="text-xs text-[#eaecf0]/60">{user?.role}</p>
                 </div>
               </div>
 
-              <button className="rounded-xl p-2 transition hover:bg-red-500/20">
+              <button
+              type="button"
+              onSubmit={handleLogout} 
+               className="rounded-xl p-2 transition hover:bg-red-500/20">
                 <LogOut className="text-[#d90000]" size={20} />
               </button>
             </div>
@@ -129,7 +145,7 @@ export default function CandidateDashboard() {
               Welcome Back,
               <span className="bg-gradient-to-r from-[#d90000] to-indigo-400 bg-clip-text text-transparent">
                 {" "}
-                John
+               {user?.fullname?.split(" ")[0]}
               </span>
             </h1>
 
