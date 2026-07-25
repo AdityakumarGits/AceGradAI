@@ -72,7 +72,7 @@ export const verifyInterviewOtp = async (req, res, next) => {
             });
         }
 
-        const interview = await Interview.findById(interviewId);
+        const interview = await Interview.findOne({ _id: interviewId });
         if (!interview) {
             return res.status(404).json({ status: "fail", message: "Invalid or expired interview link" });
         }
@@ -117,7 +117,7 @@ export const submitGuestAnswer = async (req, res, next) => {
             return res.status(400).json({ status: "fail", message: "Missing required fields" });
         }
 
-        const interview = await Interview.findById(interviewId);
+      const interview = await Interview.findOne({ _id: interviewId });
         if (!interview) return res.status(404).json({ status: "fail", message: "Session not found" });
 
         if (interview.status === "completed") {
@@ -125,7 +125,10 @@ export const submitGuestAnswer = async (req, res, next) => {
         }
 
         const questionText = interview.questions[questionIndex];
-
+       const alreadyAnswered = interview.answers.some(a => a.questionIndex === questionIndex);
+       if (alreadyAnswered) {
+    return next(new AppError("This question has already been answered", 400));
+}
         interview.answers.push({
             questionIndex,
             questionText,
@@ -167,6 +170,9 @@ export const submitAnswer = async (req, res, next) => {
         if (!questionText) {
             return next(new AppError("Invalid question index provided", 400));
         }
+        if (!questionText) {
+    return res.status(400).json({ status: "fail", message: "Invalid question index provided" });
+}
 
         interview.answers.push({ 
             questionIndex, 
@@ -202,8 +208,7 @@ export const endInterview = async (req, res, next) => {
         }
 
         // Flexible lookup: Allows parsing if it belongs to a registered candidate, or matches public criteria
-        const interview = await Interview.findById(interviewId);
-
+        const interview = await Interview.findOne({ _id: interviewId, userId: req.user.id });
         if (!interview) {
             return next(new AppError("No active session found with the provided ID", 404));
         }
@@ -284,8 +289,7 @@ export const getAllInterviews = async (req, res, next) => {
 export const getInterviewDetails = async (req, res, next) => {
     try {
         const { interviewId } = req.params;
-
-        const interview = await Interview.findById(interviewId);
+const interview = await Interview.findOne({ _id: interviewId, userId: req.user.id });
 
         if (!interview) {
             return next(new AppError("No interview session found with that ID", 404));

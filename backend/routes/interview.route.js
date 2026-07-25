@@ -1,7 +1,7 @@
-import express from"express";
+import express from "express";
 import {protect} from "../middlewares/protectedMiddleware.js";
-import { startInterview,submitAnswer,endInterview,getAllInterviews,getInterviewDetails} from "../controller/Interview.controller.js";
-import { verifyInterviewOtp, submitGuestAnswer } from "../controller/Interview.controller.js"; // Import new helpers
+import { startInterview,submitAnswer,endInterview,getAllInterviews,getInterviewDetails} from "../controller/interview.controller.js";
+import { verifyInterviewOtp, submitGuestAnswer } from "../controller/interview.controller.js"; // Import new helpers
 
 
 

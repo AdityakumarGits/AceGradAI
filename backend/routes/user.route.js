@@ -1,6 +1,8 @@
+
 import express from"express";
 import { signUp,login, verifyOTP, SendOtp, resendOtp, forgetPassword, resetPassword } from "../controller/user.controller.js"; 
 const route=express.Router();
+
 
 import rateLimit from "express-rate-limit";
 import { protect } from "../middlewares/protectedMiddleware.js";

@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
     },
     role: {
         type: String,
-        enum: ["candidate", "recruiter", "admin"], 
+        enum: ["candidate", "recruiter"], 
         default: "candidate" 
     },
     Verified:{
@@ -37,15 +37,10 @@ const userSchema = new mongoose.Schema({
 userSchema.pre("save", async function(next) {
     // Agar password modify nahi hua hai, toh aage badh jao
     if (!this.isModified("password")) return ;
-    
-    try {
         // Password ko 10 salt rounds ke sath hash kar diya
         this.password = await bcrypt.hash(this.password, 10);
-    } catch (error) {
-       next(error);
-         // Kuch gadbad hui toh error ko humare central handler par fek diya
-    }
 });
+
 
 // 🔑 UTILITY METHOD: Login ke waqt password match karne ke liye custom function
 userSchema.methods.correctPassword = async function(candidatePassword, userPassword) {
