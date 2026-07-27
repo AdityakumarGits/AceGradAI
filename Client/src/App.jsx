@@ -13,31 +13,32 @@ import StartInterview from "./Pages/StartInterview/StartInterview";
 import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
 import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
 import VerifyOTP from "./Pages/VerifyOTP";
-
-
+import PrivateRoute from "./context/PrivateRoute";
 
 const App = () => {
   return (
     <Routes>
-
       {/* Landing Page */}
       <Route path="/" element={<Home />} />
 
       {/* Auth */}
       <Route path="/candidatesignup" element={<CandidateSignup />} />
-      <Route path="/verifyotp" element={<VerifyOTP/>}/>
+      <Route path="/verifyotp" element={<VerifyOTP />} />
       <Route path="/candidatelogin" element={<CandidateLogin />} />
       <Route path="/companysignup" element={<CompanySignup />} />
       <Route path="/companylogin" element={<CompanyLogin />} />
       <Route path="/forget-password" element={<ForgetPassword />} />
 
-      {/* Dashboard */}
-      <Route path="/candidatedashboard" element={<CandidateDashboard/>}/>
-      <Route path="/interviewsetup" element={<InterviewSetup/>}/>
-       <Route path="/startinterview" element={<StartInterview/>}/>
+      {/*  Protected Routes (Candidate) */}
+      <Route element={<PrivateRoute />}>
+        <Route path="/candidatedashboard" element={<CandidateDashboard />} />
+        <Route path="/interviewsetup" element={<InterviewSetup />} />
+        <Route path="/startinterview" element={<StartInterview />} />
+        <Route path="/feedback" element={<AIFeedbackReport />} />
+      </Route>
+
+      {/* Company side — abhi unprotected hai, tumne bola company baad me banaoge */}
       <Route path="/companydashboard" element={<CompanyDashboard />} />
-      <Route path="/feedback" element={<AIFeedbackReport/>}/>
-  
 
       {/* Contact Page */}
       <Route path="/contact" element={<Contact />} />
