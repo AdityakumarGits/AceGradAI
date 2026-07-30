@@ -1,83 +1,59 @@
-// src/pages/InterviewSetup/InterviewSetup.jsx
-
-import React, { useState } from "react";
-import { Settings2, ArrowLeft, Rocket, CheckCircle2 } from "lucide-react";
-
-import DeviceCheckPanel from "./DeviceCheckPanel";
-import ConfigGuidelines from "./ConfigGuidelines";
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Wifi, Video } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
+import { useInternetCheck } from "./hooks/useInternetCheck";
+import { useCameraStream } from "./hooks/useCameraStream";
+import ChecklistItem from "./components/ChecklistItem";
+import MicTestStep from "./components/MicTestSetup";
+import CameraPreview from "./components/CameraPreview";
 
 export default function InterviewSetup() {
-  const [selectedRole, setSelectedRole] = useState("React Frontend Developer");
+  const { user } = useAuth();
+  const internetOk = useInternetCheck();
+  const { videoRef, cameraOk } = useCameraStream();
+  const [micOk, setMicOk] = useState(false);
 
-  const [micStatus, setMicStatus] = useState("ready");
+  const allChecksPassed = internetOk && cameraOk && micOk;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] text-[#eaecf0]">
-      {/* Background Glow */}
+    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 py-10 text-[#eaecf0]">
+      <div className="absolute -top-40 -left-32 h-[380px] w-[380px] rounded-full bg-[#d90000]/20 blur-[170px]" />
+      <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-[#6366f1]/20 blur-[220px]" />
 
-      <div className="absolute -top-40 -left-32 h-[420px] w-[420px] rounded-full bg-[#d90000]/15 blur-[180px]" />
+      <div className="relative mx-auto max-w-5xl">
+        <div className="mb-8 flex items-center gap-2">
+          <span className="text-2xl font-bold text-white">
+            AceGrad<span className="text-[#d90000]">AI</span>
+          </span>
+        </div>
 
-      <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-indigo-600/15 blur-[220px]" />
+        <p className="text-lg text-[#eaecf0]">Hi {user?.fullname?.split(" ")[0] || "there"}!</p>
+        <h1 className="mt-1 text-3xl font-bold text-white md:text-4xl">
+          Welcome to your AI Interview
+        </h1>
+        <p className="mt-2 text-[rgba(234,236,240,0.6)]">
+          Before starting, we'll be running a short system check to make sure everything works seamlessly.
+        </p>
 
-      <div className="relative z-10 flex min-h-screen flex-col px-8 py-8">
-        {/* Header */}
-
-        <header className="mx-auto flex w-full max-w-6xl items-center justify-between rounded-3xl border border-white/10 bg-[#0d1538]/80 px-8 py-6 backdrop-blur-xl">
-          <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d90000] to-indigo-600 shadow-lg">
-              <Settings2 className="text-white" size={30} />
-            </div>
-
-            <div>
-              <h1 className="text-3xl font-bold text-white">Interview Setup</h1>
-
-              <p className="mt-2 text-[#eaecf0]/60">
-                Configure your environment before entering the AI interview
-                room.
-              </p>
-            </div>
+        <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="rounded-3xl border border-[rgba(255,255,255,0.10)] bg-[#0d1538]/80 backdrop-blur-xl p-6">
+            <ChecklistItem icon={<Wifi size={18} />} label="Internet speed" status={internetOk} />
+            <ChecklistItem icon={<Video size={18} />} label="Camera and microphone access" status={cameraOk} />
+            <MicTestStep onComplete={() => setMicOk(true)} disabled={cameraOk === false} />
           </div>
 
-          <div className="rounded-full border border-[#d90000]/30 bg-[#d90000]/10 px-5 py-3">
-            <span className="text-sm font-semibold text-[#d90000]">
-              Step 1 / 2
-            </span>
-          </div>
-        </header>
+          <CameraPreview videoRef={videoRef} cameraOk={cameraOk} candidateName={user?.fullname} />
+        </div>
 
-        {/* Main */}
-
-        <main className="mx-auto my-8 grid w-full max-w-6xl flex-1 grid-cols-1 gap-8 lg:grid-cols-2">
-          <DeviceCheckPanel micStatus={micStatus} setMicStatus={setMicStatus} />
-
-          <ConfigGuidelines
-            selectedRole={selectedRole}
-            setSelectedRole={setSelectedRole}
-          />
-        </main>
-
-        {/* Footer */}
-
-        <footer className="mx-auto flex w-full max-w-6xl items-center justify-between rounded-3xl border border-white/10 bg-[#0d1538]/80 px-8 py-6 backdrop-blur-xl">
-          <button className="flex items-center gap-3 text-[#eaecf0]/70 transition hover:text-white">
-            <ArrowLeft size={20} />
-            Return to Dashboard
-          </button>
-
-          <Link to='/startinterview'
-            disabled={micStatus !== "ready"}
-            className={`flex items-center gap-3 rounded-2xl px-8 py-4 font-semibold transition-all duration-300 ${
-              micStatus === "ready"
-                ? "bg-gradient-to-r from-[#d90000] to-indigo-600 text-white hover:scale-105 hover:shadow-[0_0_35px_rgba(217,0,0,.35)]"
-                : "cursor-not-allowed border border-white/10 bg-white/5 text-[#eaecf0]/30"
-            }`}
+        <div className="mt-8 flex justify-end">
+          <button
+            type="button"
+            disabled={!allChecksPassed}
+            className="rounded-xl bg-gradient-to-r from-[#d90000] to-[#6366f1] px-8 py-3 font-semibold text-white transition-all hover:from-[#b91c1c] hover:to-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-40"
           >
-            <CheckCircle2 size={20} />
-            <Rocket size={18} />
-            Enter Interview Room
-          </Link>
-        </footer>
+            Start Interview
+          </button>
+        </div>
       </div>
     </div>
   );

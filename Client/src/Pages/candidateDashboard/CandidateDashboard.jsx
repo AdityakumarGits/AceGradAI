@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  {useEffect, useState } from "react";
 import OverviewSection from "./OverviewSection";
 import HistorySection from "./HistorySection";
 import AnalyticsSection from "./AnalyticsSection";
@@ -8,12 +8,42 @@ import { useAuth } from "../../context/AuthContext";
 
 
 import { LayoutDashboard, History, BarChart3, Flame, LogOut, UserCircle2, Rocket,} from "lucide-react";
+import { candidateToast } from "../../utils/toast";
 
 export default function CandidateDashboard() {
     const navigate = useNavigate();
   const { logout, user } = useAuth(); 
   const [activeTab, setActiveTab] = useState("overview");
+  const [interviews,setInterviews]=useState([]);
+  const [loading,setLoading]=useState(true);
+ 
 
+  const handleData=async()=>{
+
+    try {
+      setLoading(true);
+
+      const response=await API.get("/interview/getAllInterviews")
+        setInterviews(response.data.data.interviews);
+        // pehla .data = axios ka wrapper
+        // dusra .data = tumhare backend controller ka apna wrapper object
+        // .interviews = asli array
+
+        
+      
+      
+      console.log(response.data);
+      
+    } catch (error) {
+       console.log(error);
+       candidateToast.error("Something went wrong");
+    }finally{
+      setLoading(false);
+    }
+  }
+  useEffect(() => {
+    handleData();
+}, []);
 
  const handleLogout=async()=>{
     try {
@@ -32,19 +62,19 @@ export default function CandidateDashboard() {
 
   const renderSection = () => {
     switch (activeTab) {
-      case "overview":
-        return <OverviewSection setActiveTab={setActiveTab} />;
+        case "overview":
+            return <OverviewSection interviews={interviews} loading={loading} setActiveTab={setActiveTab} />;
 
-      case "history":
-        return <HistorySection />;
+        case "history":
+            return <HistorySection interviews={interviews} loading={loading} />;
 
-      case "analytics":
-        return <AnalyticsSection />;
+        case "analytics":
+            return <AnalyticsSection interviews={interviews} loading={loading} />;
 
-      default:
-        return <OverviewSection setActiveTab={setActiveTab} />;
+        default:
+            return <OverviewSection interviews={interviews} loading={loading} setActiveTab={setActiveTab} />;
     }
-  };
+};
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] text-[#eaecf0]">
@@ -125,7 +155,7 @@ export default function CandidateDashboard() {
 
               <button
               type="button"
-              onSubmit={handleLogout} 
+              onClick={handleLogout} 
                className="rounded-xl p-2 transition hover:bg-red-500/20">
                 <LogOut className="text-[#d90000]" size={20} />
               </button>
