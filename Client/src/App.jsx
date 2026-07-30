@@ -14,6 +14,7 @@ import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
 import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
 import VerifyOTP from "./Pages/VerifyOTP";
 import PrivateRoute from "./context/PrivateRoute";
+import InterviewConfig from "./Pages/InterviewConfig/InterviewConfig";
 
 const App = () => {
   return (
@@ -32,7 +33,8 @@ const App = () => {
       {/*  Protected Routes (Candidate) */}
       <Route element={<PrivateRoute />}>
         <Route path="/candidatedashboard" element={<CandidateDashboard />} />
-        <Route path="/interviewsetup" element={<InterviewSetup />} />
+        <Route  path="/interview-config"element={<InterviewConfig/>}/> 
+         <Route path="/interviewsetup" element={<InterviewSetup />} />
         <Route path="/startinterview" element={<StartInterview />} />
         <Route path="/feedback" element={<AIFeedbackReport />} />
       </Route>

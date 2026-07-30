@@ -5,6 +5,7 @@ import AnalyticsSection from "./AnalyticsSection";
 import API from "../../services/api";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext"; 
+import InterviewConfig from "../InterviewConfig/InterviewConfig";
 
 
 import { LayoutDashboard, History, BarChart3, Flame, LogOut, UserCircle2, Rocket,} from "lucide-react";
@@ -16,6 +17,7 @@ export default function CandidateDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [interviews,setInterviews]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [showConfigModal, setShowConfigModal] = useState(false);
  
 
   const handleData=async()=>{
@@ -63,8 +65,14 @@ export default function CandidateDashboard() {
   const renderSection = () => {
     switch (activeTab) {
         case "overview":
-            return <OverviewSection interviews={interviews} loading={loading} setActiveTab={setActiveTab} />;
-
+             return (
+                <OverviewSection
+                    interviews={interviews}
+                    loading={loading}
+                    setActiveTab={setActiveTab}
+                    onStartInterview={() => setShowConfigModal(true)}
+                />
+            );
         case "history":
             return <HistorySection interviews={interviews} loading={loading} />;
 
@@ -72,8 +80,16 @@ export default function CandidateDashboard() {
             return <AnalyticsSection interviews={interviews} loading={loading} />;
 
         default:
-            return <OverviewSection interviews={interviews} loading={loading} setActiveTab={setActiveTab} />;
-    }
+          return (
+        <OverviewSection
+            interviews={interviews}
+            loading={loading}
+            setActiveTab={setActiveTab}
+            onStartInterview={() => setShowConfigModal(true)}
+        />
+    );
+
+          }
 };
 
   return (
@@ -191,7 +207,9 @@ export default function CandidateDashboard() {
         </header>
 
         {/* Dynamic Section */}
-
+        {showConfigModal && (
+       <InterviewConfig onClose={() => setShowConfigModal(false)} />
+         )}
         <div>{renderSection()}</div>
       </main>
     </div>
