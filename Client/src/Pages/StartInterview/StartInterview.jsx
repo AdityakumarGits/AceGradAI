@@ -5,7 +5,8 @@ import { BrainCircuit, CircleDot } from "lucide-react";
 
 import QuestionDisplay from "./QuestionDisplay";
 import TranscriptionPanel from "./TranscriptionPanel";
-
+import { useCameraStream } from "../InterviewSetup/hooks/useCameraStream";
+import CameraPreview from "../InterviewSetup/components/CameraPreview";
 export default function StartInterview() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [isRecording, setIsRecording] = useState(false);

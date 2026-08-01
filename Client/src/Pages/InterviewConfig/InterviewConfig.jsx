@@ -5,13 +5,36 @@ import JDTab from "./JDTab";
 import ResumeTab from "./ResumeTab";
 import TopicsTab from "./TopicsTab";
 import { useNavigate } from "react-router-dom";
+import { candidateToast } from "../../utils/toast";
+import axios from "axios";
+import API from "../../services/api";
 
 export default function InterviewConfig({ onClose }) {
   const [activeTab, setActiveTab] = useState("jd");
   const [selectedDifficulty, setSelectedDifficulty] = useState("");
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [customTopic, setCustomTopic] = useState("");
- const naviagte=useNavigate();
+
+ const [jobTitle,setJobTitle ]=useState("")
+ const [jobDescription,SetJobDescription]=useState("");
+ const [loading,setLoading]=useState(false);
+
+
+ const handleSubmit=async(e)=>{
+     e.preventDefault();
+   if(!jobDescription  || !jobTitle){
+      candidateToast.error("Job Title or Job Description are Missing");
+    return 
+   }
+   navigate("/interviewsetup", {
+        state: { jobTitle, jobDescription }
+    });
+    onClose?.();  
+    
+  }
+
+
+ const navigate=useNavigate();
   const toggleTopic = (topic) => {
     setSelectedTopics((prev) =>
       prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
@@ -65,7 +88,13 @@ export default function InterviewConfig({ onClose }) {
         </div>
 
         <div className="p-6">
-          {activeTab === "jd" && <JDTab />}
+          {activeTab === "jd" && 
+          <JDTab
+        jobTitle={jobTitle}
+        onJobTitleChange={setJobTitle}
+        jobDescription={jobDescription}
+        onJobDescriptionChange={SetJobDescription}
+     />}
 
           {activeTab === "resume" && (
             <ResumeTab
@@ -98,7 +127,7 @@ export default function InterviewConfig({ onClose }) {
           <button
             
             type="button"
-            onClick={()=>{naviagte("/interviewsetup")}}
+            onClick={handleSubmit}
             className="rounded-xl bg-gradient-to-r from-[#d90000] to-[#6366f1] px-6 py-2.5 font-semibold text-white transition-all hover:from-[#b91c1c] hover:to-[#4f46e5]"
           >
             Continue

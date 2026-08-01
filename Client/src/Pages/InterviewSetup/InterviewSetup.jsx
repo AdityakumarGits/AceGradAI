@@ -14,8 +14,21 @@ export default function InterviewSetup() {
   const internetOk = useInternetCheck();
   const { videoRef, cameraOk, stream } = useCameraStream();   // sirf EK baar, stream sahit
   const [micOk, setMicOk] = useState(false);
+  const [loading,setLoading]=useState(false);
 
   const allChecksPassed = internetOk && cameraOk && micOk;
+ 
+  const handleData=async()=>{
+     
+    try {
+      
+    } catch (error) {
+      
+    }finally{
+
+    }
+  }
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 py-10 text-[#eaecf0]">
