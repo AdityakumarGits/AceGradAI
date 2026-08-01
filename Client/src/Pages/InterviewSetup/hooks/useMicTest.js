@@ -1,4 +1,4 @@
-import { useRef, useState,useEffect } from "react";
+import { useRef, useState } from "react";
 
 const TARGET_PHRASE = "i am ready to start the interview";
 
@@ -12,11 +12,10 @@ export function useMicTest() {
     const SpeechRecognition =
       window.SpeechRecognition || window.webkitSpeechRecognition;
 
-      useEffect(() => {
-    if (micOk) {
-      onComplete?.();
+    if (!SpeechRecognition) {
+      setMicOk(true);
+      return;
     }
-  }, [micOk, onComplete]);
 
     const recognition = new SpeechRecognition();
     recognition.lang = "en-US";
@@ -33,7 +32,10 @@ export function useMicTest() {
       }
     };
 
-    recognition.onerror = () => setMicTesting(false);
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      setMicTesting(false);
+    };
     recognition.onend = () => setMicTesting(false);
 
     recognitionRef.current = recognition;

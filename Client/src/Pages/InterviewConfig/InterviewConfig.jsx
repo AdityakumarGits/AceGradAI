@@ -98,7 +98,7 @@ export default function InterviewConfig({ onClose }) {
           <button
             
             type="button"
-            onClick={()=>{naviagte("/interview-config")}}
+            onClick={()=>{naviagte("/interviewsetup")}}
             className="rounded-xl bg-gradient-to-r from-[#d90000] to-[#6366f1] px-6 py-2.5 font-semibold text-white transition-all hover:from-[#b91c1c] hover:to-[#4f46e5]"
           >
             Continue

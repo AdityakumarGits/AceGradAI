@@ -6,11 +6,13 @@ import { useCameraStream } from "./hooks/useCameraStream";
 import ChecklistItem from "./components/ChecklistItem";
 import MicTestStep from "./components/MicTestSetup";
 import CameraPreview from "./components/CameraPreview";
+import {useNavigate } from "react-router-dom";
 
 export default function InterviewSetup() {
+  const navigate=useNavigate();
   const { user } = useAuth();
   const internetOk = useInternetCheck();
-  const { videoRef, cameraOk } = useCameraStream();
+  const { videoRef, cameraOk, stream } = useCameraStream();   // sirf EK baar, stream sahit
   const [micOk, setMicOk] = useState(false);
 
   const allChecksPassed = internetOk && cameraOk && micOk;
@@ -39,7 +41,11 @@ export default function InterviewSetup() {
           <div className="rounded-3xl border border-[rgba(255,255,255,0.10)] bg-[#0d1538]/80 backdrop-blur-xl p-6">
             <ChecklistItem icon={<Wifi size={18} />} label="Internet speed" status={internetOk} />
             <ChecklistItem icon={<Video size={18} />} label="Camera and microphone access" status={cameraOk} />
-            <MicTestStep onComplete={() => setMicOk(true)} disabled={cameraOk === false} />
+            <MicTestStep
+              onComplete={() => setMicOk(true)}
+              disabled={cameraOk === false}
+              stream={stream}
+            />
           </div>
 
           <CameraPreview videoRef={videoRef} cameraOk={cameraOk} candidateName={user?.fullname} />
@@ -48,6 +54,7 @@ export default function InterviewSetup() {
         <div className="mt-8 flex justify-end">
           <button
             type="button"
+            onClick={()=>{navigate('/startinterview')}}
             disabled={!allChecksPassed}
             className="rounded-xl bg-gradient-to-r from-[#d90000] to-[#6366f1] px-8 py-3 font-semibold text-white transition-all hover:from-[#b91c1c] hover:to-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-40"
           >

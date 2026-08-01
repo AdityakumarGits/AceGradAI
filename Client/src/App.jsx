@@ -33,7 +33,7 @@ const App = () => {
       {/*  Protected Routes (Candidate) */}
       <Route element={<PrivateRoute />}>
         <Route path="/candidatedashboard" element={<CandidateDashboard />} />
-        <Route  path="/interview-config"element={<InterviewConfig/>}/> 
+       
          <Route path="/interviewsetup" element={<InterviewSetup />} />
         <Route path="/startinterview" element={<StartInterview />} />
         <Route path="/feedback" element={<AIFeedbackReport />} />

@@ -4,19 +4,21 @@ export function useCameraStream() {
   const videoRef = useRef(null);
   const streamRef = useRef(null);
   const [cameraOk, setCameraOk] = useState(null);
+  const [stream, setStream] = useState(null);   // 👈 naya
 
   useEffect(() => {
     const initMedia = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: true,
         });
-        streamRef.current = stream;
+        streamRef.current = mediaStream;
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          videoRef.current.srcObject = mediaStream;
         }
         setCameraOk(true);
+        setStream(mediaStream);   // 👈 naya
       } catch (error) {
         console.error("Media access denied:", error);
         setCameraOk(false);
@@ -29,5 +31,5 @@ export function useCameraStream() {
     };
   }, []);
 
-  return { videoRef, cameraOk };
+  return { videoRef, cameraOk, stream };   // 👈 stream bhi return
 }

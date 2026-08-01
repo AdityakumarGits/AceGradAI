@@ -1,12 +1,17 @@
+import { useEffect } from "react";
 import { CheckCircle2, Loader2, Mic } from "lucide-react";
 import { useMicTest } from "../hooks/useMicTest";
-import { useEffect } from "react";
+import { useAudioLevel } from "../hooks/useAudioLevel";
 
-export default function MicTestStep({ onComplete, disabled }) {
+export default function MicTestStep({ onComplete, disabled, stream }) {
   const { micTesting, micOk, heardText, startListening } = useMicTest();
+  const volume = useAudioLevel(stream);
 
-  // Parent ko batao jab mic verify ho jaye
-  if (micOk) onComplete?.();
+  useEffect(() => {
+    if (micOk) {
+      onComplete?.();
+    }
+  }, [micOk, onComplete]);
 
   return (
     <div className="flex items-start gap-3 py-3">
@@ -21,9 +26,29 @@ export default function MicTestStep({ onComplete, disabled }) {
       </div>
       <div className="flex-1">
         <p className="font-medium text-[#eaecf0]">Testing microphone</p>
+
+        {/* Real-time voice level bars */}
+        {!micOk && (
+          <div className="mt-2 flex h-6 items-end gap-1">
+            {Array.from({ length: 12 }).map((_, i) => {
+              const barThreshold = (i + 1) * (100 / 12);
+              const isActive = volume >= barThreshold;
+              return (
+                <div
+                  key={i}
+                  className={`w-1.5 rounded-full transition-all duration-75 ${
+                    isActive ? "bg-[#22c55e]" : "bg-white/10"
+                  }`}
+                  style={{ height: `${8 + i * 1.5}px` }}
+                />
+              );
+            })}
+          </div>
+        )}
+
         {!micOk && (
           <>
-            <p className="mt-1 text-sm text-[#f59e0b]">
+            <p className="mt-2 text-sm text-[#f59e0b]">
               Please say - "I am ready to start the interview."
             </p>
             <button
