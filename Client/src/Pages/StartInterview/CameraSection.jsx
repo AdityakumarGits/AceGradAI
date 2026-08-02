@@ -22,7 +22,7 @@ export default function CameraSection({ isRecording, candidateName }) {
           </div>
         )}
       </div>
-
+       {/* //video red */}
       <div className="min-h-0 flex-1 overflow-hidden rounded-xl">
         <CameraPreview videoRef={videoRef} cameraOk={cameraOk} candidateName={candidateName} />
       </div>
