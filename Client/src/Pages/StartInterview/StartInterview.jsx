@@ -4,17 +4,32 @@ import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
+import API from "../../services/api";
 
 export default function StartInterview() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
+  const [displayQuestion,SetDisplayQuestion]=useState("");
+  const [loadingDisplayQuestion,setLoadingDisplayQuestion]=useState(false);
 
-  const mockQuestions = [
-    "Explain the concept of closures in JavaScript and provide a practical real-world use case.",
-    "What is the difference between state and props in React, and how does data flow down the component tree?",
-    "How does the Event Loop handle asynchronous operations in Node.js execution environments?",
-  ];
 
+  // const mockQuestions = [
+  //   "Explain the concept of closures in JavaScript and provide a practical real-world use case.",
+  //   "What is the difference between state and props in React, and how does data flow down the component tree?",
+  //   "How does the Event Loop handle asynchronous operations in Node.js execution environments?",
+  // ];
+   
+  const handleMockQuestions= async()=>{
+    setLoadingDisplayQuestion(true)
+    try {
+       const mockQuestions= await API.get("interview/startInterview",)
+         SetDisplayQuestion(mockQuestions.data.data.displayQuestion)
+    } catch (error) {
+      console.error(error);
+    }finally{
+      setLoadingDisplayQuestion(false)
+    }
+  }
   const handleNextQuestion = () => {
     if (currentQuestionIdx < mockQuestions.length - 1) {
       setCurrentQuestionIdx((prev) => prev + 1);
