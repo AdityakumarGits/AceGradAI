@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, useEffect } from "react";
 import QuestionDisplay from "./QuestionDisplay";
 import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
@@ -9,29 +9,32 @@ import API from "../../services/api";
 export default function StartInterview() {
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
-  const [displayQuestion,SetDisplayQuestion]=useState("");
-  const [loadingDisplayQuestion,setLoadingDisplayQuestion]=useState(false);
 
+  const [interviewID, setInterviewID] = useState("");
+  const [questions, setQuestions] = useState([]);
+  const [loadingDisplayQuestion, setLoadingDisplayQuestion] = useState(false);
 
-  // const mockQuestions = [
-  //   "Explain the concept of closures in JavaScript and provide a practical real-world use case.",
-  //   "What is the difference between state and props in React, and how does data flow down the component tree?",
-  //   "How does the Event Loop handle asynchronous operations in Node.js execution environments?",
-  // ];
-   
-  const handleMockQuestions= async()=>{
-    setLoadingDisplayQuestion(true)
+  const handleStartInterview = async () => {
+    setLoadingDisplayQuestion(true);
     try {
-       const mockQuestions= await API.get("interview/startInterview",)
-         SetDisplayQuestion(mockQuestions.data.data.displayQuestion)
+      const response = await API.get("interview/startInterview");
+      const interviewData = response.data.data.interview; // ek hi jagah se nikaalo, dono setters isi se feed hote hain
+
+      setQuestions(interviewData.questions);
+      setInterviewID(interviewData._id);
     } catch (error) {
       console.error(error);
-    }finally{
-      setLoadingDisplayQuestion(false)
+    } finally {
+      setLoadingDisplayQuestion(false);
     }
-  }
+  };
+
+  useEffect(() => {
+    handleStartInterview();
+  }, []);
+
   const handleNextQuestion = () => {
-    if (currentQuestionIdx < mockQuestions.length - 1) {
+    if (currentQuestionIdx < questions.length - 1) {
       setCurrentQuestionIdx((prev) => prev + 1);
     } else {
       alert("Mock Session Complete!");
@@ -46,16 +49,17 @@ export default function StartInterview() {
       <InterviewTopBar
         jobTitle="React Frontend Interview"
         currentIndex={currentQuestionIdx}
-        totalQuestions={mockQuestions.length}
+        totalQuestions={questions.length}
       />
 
       <main className="flex flex-1 gap-6 overflow-hidden p-6">
         {/* Left — Question panel, full height */}
         <div className="w-[55%]">
           <QuestionDisplay
-            questionText={mockQuestions[currentQuestionIdx]}
+            questionText={questions[currentQuestionIdx]}
             index={currentQuestionIdx}
-            totalQuestions={mockQuestions.length}
+            totalQuestions={questions.length}
+            loading={loadingDisplayQuestion}
           />
         </div>
 
@@ -75,7 +79,7 @@ export default function StartInterview() {
 
       <InterviewControlBar
         onNext={handleNextQuestion}
-        isLastQuestion={currentQuestionIdx === mockQuestions.length - 1}
+        isLastQuestion={currentQuestionIdx === questions.length - 1}
         canProceed={true}
       />
     </div>
