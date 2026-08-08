@@ -2,7 +2,7 @@ import { Radio, Video } from "lucide-react";
 import { useCameraStream } from "../InterviewSetup/hooks/useCameraStream";
 import CameraPreview from "../InterviewSetup/components/CameraPreview";
 
-export default function CameraSection({ isRecording, candidateName }) {
+export default function CameraSection({ isRecording, candidateName,onToggleRecording  }) {
   const { videoRef, cameraOk } = useCameraStream();
 
   return (
