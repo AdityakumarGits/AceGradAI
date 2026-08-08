@@ -7,9 +7,12 @@ import ChecklistItem from "./components/ChecklistItem";
 import MicTestStep from "./components/MicTestSetup";
 import CameraPreview from "./components/CameraPreview";
 import {useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 export default function InterviewSetup() {
   const navigate=useNavigate();
+ const location = useLocation();
+const { jobTitle, jobDescription } = location.state || {};
   const { user } = useAuth();
   const internetOk = useInternetCheck();
   const { videoRef, cameraOk, stream } = useCameraStream();   // sirf EK baar, stream sahit
@@ -18,16 +21,6 @@ export default function InterviewSetup() {
 
   const allChecksPassed = internetOk && cameraOk && micOk;
  
-  const handleData=async()=>{
-     
-    try {
-      
-    } catch (error) {
-      
-    }finally{
-
-    }
-  }
 
 
   return (
@@ -67,7 +60,7 @@ export default function InterviewSetup() {
         <div className="mt-8 flex justify-end">
           <button
             type="button"
-            onClick={()=>{navigate('/startinterview')}}
+            onClick={()=>{navigate('/startinterview' ,{state:{jobTitle,jobDescription}})}}
             disabled={!allChecksPassed}
             className="rounded-xl bg-gradient-to-r from-[#d90000] to-[#6366f1] px-8 py-3 font-semibold text-white transition-all hover:from-[#b91c1c] hover:to-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-40"
           >
