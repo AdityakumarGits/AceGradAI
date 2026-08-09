@@ -60,7 +60,8 @@ export default function CandidateDashboard() {
    
     }
   } 
- 
+ const voices = window.speechSynthesis.getVoices();
+console.log(voices); // dekho kya-kya available hai tumhare system pe
 
   const renderSection = () => {
     switch (activeTab) {

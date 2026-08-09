@@ -12,7 +12,7 @@ export default function StartInterview() {
   const { jobTitle, jobDescription } = location.state || {};
 
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isRecording, setIsRecording] = useState(false); // ab 'recognition listening' ka indicator hai
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
 
@@ -22,8 +22,9 @@ export default function StartInterview() {
   const [errorMsg, setErrorMsg] = useState(null);
 
   // refs — UI re-render inke liye zaroori nahi
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
+  const recognitionRef = useRef(null);
+  const transcriptRef = useRef("");
+  const utteranceRef = useRef(null); // Chrome utterance ko beech me drop na kare, isliye persistent reference
 
   const handleStartInterview = async () => {
     setLoadingDisplayQuestion(true);
@@ -46,6 +47,7 @@ export default function StartInterview() {
     }
   };
 
+  
   useEffect(() => {
     if (!jobTitle || !jobDescription) {
       console.error("Job title/description missing — redirecting to config");
@@ -56,81 +58,123 @@ export default function StartInterview() {
     handleStartInterview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-useEffect(() => {
-  if (questions.length > 0 && !isComplete) {
-    startRecording();
-  }
-}, [currentQuestionIdx, questions]); // 'questions' add karna hai
 
-  const startRecording = async () => {
+  // Naya question aate hi, TTS se sunao — startRecording() nahi, ab speakQuestion()
+  useEffect(() => {
+    if (questions.length > 0 && !isComplete) {
+      speakQuestion(questions[currentQuestionIdx]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIdx, questions]);
+
+  // ---- 1. Question ko awaaz se sunana ----
+  const speakQuestion = (questionText) => {
+    console.log("Question render/speak triggered at:", Date.now());
+
+    const utterance = new SpeechSynthesisUtterance(questionText);
+    utterance.onend = () => {
+      console.log("TTS actually finished at:", Date.now());
+      startListening(); // bolna khatam, ab sunna shuru
+    };
+    utterance.onerror = () => {
+      console.log("TTS errored at:", Date.now());
+      startListening(); // TTS fail ho tab bhi flow na roke
+    };
+
+    utteranceRef.current = utterance; // persistent reference — Chrome ke mid-speech-drop bug ka fix
+    window.speechSynthesis.cancel(); // pehle se koi speech queue me na ho
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // ---- 2. Candidate ko sunna, text me convert karna, silence par khud stop ----
+  const startListening = () => {
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionAPI) {
+      setErrorMsg("Aapka browser voice recognition support nahi karta. Chrome try karein.");
+      return;
+    }
+
+    setErrorMsg(null);
+    transcriptRef.current = "";
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          transcriptRef.current += event.results[i][0].transcript + " ";
+        }
+      }
+    };
+
+    // Candidate chup ho gaya — recognition khud detect karta hai, stop() call karo
+    recognition.onspeechend = () => {
+      recognition.stop(); // isse 'onend' trigger hoga, jahan submit hota hai
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      if (event.error === "no-speech") {
+        recognition.stop(); // koi awaaz nahi aayi — isko bhi 'stop' hi treat karo
+      } else {
+        setErrorMsg("Voice recognition me dikkat aayi. Retry karein.");
+      }
+    };
+
+    // Recognition rukte hi (silence se ya manually) — yehi submit ka trigger point hai
+    recognition.onend = () => {
+      setIsRecording(false);
+      const finalAnswer = transcriptRef.current.trim();
+      if (finalAnswer) {
+        submitAnswer(finalAnswer);
+      }
+      // agar khaali hai, kuch bhi nahi bola gaya — abhi "Next" button se manual retry ho sakta hai
+    };
+
+    // Temporary diagnostic — confirm mic actually goes live before any error fires
+    recognition.onstart = () => {
+      console.log("Recognition actually started — mic is live now");
+    };
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsRecording(true);
+  };
+
+  // ---- 3. Text answer backend ko submit ----
+  const submitAnswer = async (answerText) => {
+    setIsSubmitting(true);
+    setErrorMsg(null);
     try {
-      // 1. Mic permission maango, stream lo
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      await API.post("interview/submitAnswer", {
+        interviewId: interviewID,
+        answerText: answerText,
+      });
 
-      // 2. Us stream ko MediaRecorder ko do
-      const recorder = new MediaRecorder(stream);
-
-      // 3. Naye question ke liye purane chunks clear karo
-      audioChunksRef.current = [];
-
-      // 4. Jab bhi audio ka piece available ho, array me push karo
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      // 5. Recording stop hote hi ye chalega — set karo start() se PEHLE
-      recorder.onstop = async () => {
-        // stream ke tracks band karo — mic ka indicator light off ho jayega
-        stream.getTracks().forEach((track) => track.stop());
-
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-
-        setIsSubmitting(true);
-        setErrorMsg(null);
-
-        const formData = new FormData();
-        formData.append("interviewId", interviewID);
-        formData.append("audio", audioBlob, "answer.webm");
-
-        try {
-          await API.post("interview/submitAnswer", formData, {
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-
-          const isLastQuestion = currentQuestionIdx + 1 >= questions.length;
-          if (isLastQuestion) {
-            setIsComplete(true);
-          } else {
-            setCurrentQuestionIdx((prev) => prev + 1); // sirf success ke baad
-          }
-        } catch (err) {
-          console.error("Submit failed:", err);
-          setErrorMsg("Answer submit nahi ho paya. Please retry.");
-          // currentQuestionIdx yahan nahi badha — retry pe wahi question rahega
-        } finally {
-          setIsSubmitting(false);
-        }
-      };
-
-      // 6. mediaRecorderRef me store karo taaki stopRecording ise access kar sake
-      mediaRecorderRef.current = recorder;
-
-      // 7. Recording actually start karo
-      recorder.start();
-      setIsRecording(true);
+      const isLastQuestion = currentQuestionIdx + 1 >= questions.length;
+      if (isLastQuestion) {
+        setIsComplete(true);
+      } else {
+        setCurrentQuestionIdx((prev) => prev + 1); // sirf success ke baad
+      }
     } catch (err) {
-      console.error("Mic access failed:", err);
-      setErrorMsg("Microphone access denied. Please allow mic access and retry.");
+      console.error("Submit failed:", err);
+      setErrorMsg("Answer submit nahi ho paya. Please retry.");
+      // currentQuestionIdx yahan nahi badha — retry pe wahi question rahega
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
-      mediaRecorderRef.current.stop(); // isse onstop trigger hoga (submit wahin hota hai)
+  // Manual override — candidate khud bolna band karke turant submit karna chahe
+  const stopListeningManually = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop(); // isse bhi 'onend' -> submit chalega
     }
-    setIsRecording(false);
   };
 
   const evaluationStatus = isRecording ? "listening" : isSubmitting ? "processing" : "idle";
@@ -154,17 +198,17 @@ useEffect(() => {
         totalQuestions={questions.length}
       />
 
-     {errorMsg && (
-  <div className="mx-6 mt-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
-    <span>{errorMsg}</span>
-    <button
-      onClick={startRecording}
-      className="ml-3 rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30"
-    >
-      Retry
-    </button>
-  </div>
-)}
+      {errorMsg && (
+        <div className="mx-6 mt-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+          <span>{errorMsg}</span>
+          <button
+            onClick={() => speakQuestion(questions[currentQuestionIdx])}
+            className="ml-3 rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       <main className="flex flex-1 gap-6 overflow-hidden p-6">
         <div className="w-[55%]">
@@ -178,10 +222,7 @@ useEffect(() => {
 
         <div className="flex w-[45%] flex-col gap-6">
           <div className="flex-1">
-            <CameraSection
-              isRecording={isRecording}
-              onToggleRecording={() => (isRecording ? stopRecording() : startRecording())}
-            />
+            <CameraSection isRecording={isRecording} />
           </div>
           <div className="flex-1">
             <EvaluationPanel status={evaluationStatus} feedbackItems={[]} />
@@ -190,7 +231,7 @@ useEffect(() => {
       </main>
 
       <InterviewControlBar
-        onNext={stopRecording}
+        onNext={stopListeningManually}
         isLastQuestion={currentQuestionIdx === questions.length - 1}
         canProceed={isRecording}
       />
