@@ -21,7 +21,9 @@
     "express-rate-limit": "^8.6.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.7.2",
+    "multer": "^2.2.0",
     "nodemon": "^3.1.14",
+    "pdf-parse": "^2.4.5",
     "resend": "^6.18.0"
   }
 }

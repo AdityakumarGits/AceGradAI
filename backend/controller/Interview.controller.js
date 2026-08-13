@@ -4,6 +4,7 @@ import {
   generateInterviewQuestions,
   evaluateInterviewSession,
 } from "../services/gemini.service.js";
+import multer from "multer"
 
 /**
  * @route   POST /api/v1/interview/startInterview
@@ -16,6 +17,7 @@ export const startInterview = async (req, res, next) => {
     const {
       questionsSources,
       topics,
+      resumeFile,
       jobTitle,
       jobDescription,
       experienceLevel,
@@ -32,6 +34,7 @@ export const startInterview = async (req, res, next) => {
     if (!experienceLevel) {
       return next(new AppError("Experience level is required", 400));
     }
+    
 
     // JD Interview
     if (questionSource === "jd") {
@@ -48,6 +51,24 @@ export const startInterview = async (req, res, next) => {
         return next(new AppError("At least one topic is required", 400));
       }
     }
+    if(questionsSources ==="resumeFile"){
+        if(!resumeFile){
+            return next(
+                new AppError("Resume File are required",400)
+            )
+        }
+    }
+     // Only PDF allow
+            if (req.file.mimetype !== "application/pdf") {
+                return next(
+                    new AppError(
+                        "Only PDF resume is supported",
+                        400
+                    )
+                );
+            }
+        
+
 
     const userId = req.user.id;
 
@@ -61,12 +82,41 @@ export const startInterview = async (req, res, next) => {
       );
     }
 
-    if (questionSource === "topics") {
+    else if (questionSource === "topics") {
       aiQuestions = await generateTopicInterviewQuestions(
         topics,
         experienceLevel,
       );
     }
+  else if(questionsSources==="resume"){
+         // PDF Buffer → Text
+            const parsedPdf = await pdfParse(req.file.buffer);
+
+            resumeText = parsedPdf.text?.trim();
+             if (!resumeText) {
+                return next(
+                    new AppError(
+                        "Could not extract text from resume PDF",
+                        400
+                    )
+                );
+            }
+
+            // Resume text → Gemini → Questions
+        aiQuestions=await generateInterviewQuestions(
+            resumeText,
+            experienceLevel
+        )
+    }
+      // Invalid source
+        else {
+            return next(
+                new AppError(
+                    "Invalid question source. Use jd, topics, or resume",
+                    400
+                )
+            );
+        }
 
     // 3. Conditional evaluation to lock an Access OTP if triggered by a corporate recruiter
     let generatedOtp = null;
@@ -83,6 +133,11 @@ export const startInterview = async (req, res, next) => {
       jobDescription: questionSource === "jd" ? jobDescription : undefined,
 
       topics: questionSource === "topics" ? topics : [],
+         // Resume text only for Resume interview
+            resumeText:
+                questionSource === "resume"
+                    ? resumeText
+                    : undefined,
       experienceLevel,
       questionSource,
       questions: aiQuestions,

@@ -2,7 +2,7 @@ import express from "express";
 import {protect} from "../middlewares/protectedMiddleware.js";
 import { startInterview,submitAnswer,endInterview,getAllInterviews,getInterviewDetails} from "../controller/interview.controller.js";
 import { verifyInterviewOtp, submitGuestAnswer } from "../controller/interview.controller.js"; // Import new helpers
-
+import multer from "multer";
 
 
 
@@ -13,7 +13,7 @@ route.post("/verifyInterviewOtp", verifyInterviewOtp);
 route.post("/submitGuestAnswer", submitGuestAnswer);
 
 // 🔒 PROTECTED ROUTES (Requires Login JWT Token)
-route.post("/startInterview",protect,startInterview);
+route.post("/startInterview",protect,multer,startInterview);
 route.post("/submitAnswer",protect,submitAnswer);
 route.post("/endInterview", protect, endInterview);
 route.get("/getAllInterviews", protect, getAllInterviews);
