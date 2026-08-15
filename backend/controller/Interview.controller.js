@@ -4,8 +4,8 @@ import {
   generateInterviewQuestions,
   evaluateInterviewSession,
 } from "../services/gemini.service.js";
-import multer from "multer"
-
+import multer from "multer";
+import pdfParse from "pdf-parse";
 /**
  * @route   POST /api/v1/interview/startInterview
  * @desc    Creates a new interview session. Generates dynamic AI questions based on the job role.
@@ -25,19 +25,17 @@ export const startInterview = async (req, res, next) => {
       candidateName,
       candidateEmail,
     } = req.body;
- console.log(body);
- 
+
     // 1. Common validation
-    if (!questionSource) {
+    if (!questionsSources) {
       return next(new AppError("Question source is required", 400));
     }
     if (!experienceLevel) {
       return next(new AppError("Experience level is required", 400));
     }
-    
 
     // JD Interview
-    if (questionSource === "jd") {
+    if (questionsSources === "jd") {
       if (!jobTitle || !jobDescription) {
         return next(
           new AppError("Job Title and Job Description are required", 400),
@@ -46,77 +44,58 @@ export const startInterview = async (req, res, next) => {
     }
 
     // Topic Interview
-    if (questionSource === "topics") {
+    if (questionsSources === "topics") {
       if (!topics || !Array.isArray(topics) || topics.length === 0) {
         return next(new AppError("At least one topic is required", 400));
       }
     }
-    if(questionsSources ==="resumeFile"){
-        if(!resumeFile){
-            return next(
-                new AppError("Resume File are required",400)
-            )
-        }
+    if (questionsSources === "resume") {
+      if (!req.file) {
+        return next(new AppError("Resume file is required", 400));
+      }
+      if (req.file.mimetype !== "application/pdf") {
+        return next(new AppError("Only PDF resume is supported", 400));
+      }
     }
-     // Only PDF allow
-            if (req.file.mimetype !== "application/pdf") {
-                return next(
-                    new AppError(
-                        "Only PDF resume is supported",
-                        400
-                    )
-                );
-            }
-        
-
 
     const userId = req.user.id;
 
     let aiQuestions;
 
-    if (questionSource === "jd") {
+    if (questionsSources === "jd") {
       aiQuestions = await generateInterviewQuestions(
         jobTitle,
         jobDescription,
         experienceLevel,
       );
-    }
-
-    else if (questionSource === "topics") {
+    } else if (questionsSources === "topics") {
       aiQuestions = await generateTopicInterviewQuestions(
         topics,
         experienceLevel,
       );
-    }
-  else if(questionsSources==="resume"){
-         // PDF Buffer → Text
-            const parsedPdf = await pdfParse(req.file.buffer);
+    } else if (questionsSources === "resume") {
+      // PDF Buffer → Text
+      const parsedPdf = await pdfParse(req.file.buffer);
 
-            resumeText = parsedPdf.text?.trim();
-             if (!resumeText) {
-                return next(
-                    new AppError(
-                        "Could not extract text from resume PDF",
-                        400
-                    )
-                );
-            }
+      const resumeText = parsedPdf.text?.trim();
+      if (!resumeText) {
+        return next(
+          new AppError("Could not extract text from resume PDF", 400),
+        );
+      }
 
-            // Resume text → Gemini → Questions
-        aiQuestions=await generateInterviewQuestions(
-            resumeText,
-            experienceLevel
-        )
+      // Resume text → Gemini → Questions
+      aiQuestions = await generateInterviewQuestions(
+        resumeText,
+        experienceLevel,
+      );
     }
-      // Invalid source
-        else {
-            return next(
-                new AppError(
-                    "Invalid question source. Use jd, topics, or resume",
-                    400
-                )
-            );
-        }
+    // Invalid source
+    else {
+      return next(
+        new AppError("Invalid question source. Use jd, topics, or resume", 400),
+      );
+    }
 
     // 3. Conditional evaluation to lock an Access OTP if triggered by a corporate recruiter
     let generatedOtp = null;
@@ -126,29 +105,25 @@ export const startInterview = async (req, res, next) => {
 
     // 5. Save interview
     const newInterview = await Interview.create({
-      userId,
+  userId,
 
-      jobTitle: questionSource === "jd" ? jobTitle : undefined,
+  jobTitle: questionsSources === "jd" ? jobTitle : undefined,
+  jobDescription: questionsSources === "jd" ? jobDescription : undefined,
 
-      jobDescription: questionSource === "jd" ? jobDescription : undefined,
+  techStack: questionsSources === "topics" ? topics : [],
+  // resumeText yahan nahi hai — schema me field nahi hai, aur sirf Gemini-prompt ke liye chahiye tha, save nahi karna
 
-      topics: questionSource === "topics" ? topics : [],
-         // Resume text only for Resume interview
-            resumeText:
-                questionSource === "resume"
-                    ? resumeText
-                    : undefined,
-      experienceLevel,
-      questionSource,
-      questions: aiQuestions,
-      interviewType: interviewType || "practice",
-      candidateName: interviewType === "campaign" ? candidateName : undefined,
-      candidateEmail: interviewType === "campaign" ? candidateEmail : undefined,
+  experienceLevel,
+  questionSource: questionsSources, // consistent naam — schema-field 'questionSource' hai, local-variable 'questionsSources' hai
 
-      accessOtp: generatedOtp,
+  questions: aiQuestions,
+  interviewType: interviewType || "practice",
+  candidateName: interviewType === "campaign" ? candidateName : undefined,
+  candidateEmail: interviewType === "campaign" ? candidateEmail : undefined,
 
-      status: "pending",
-    });
+  accessOtp: generatedOtp,
+  status: "pending",
+});
 
     // 6. Response
     res.status(201).json({
@@ -161,6 +136,8 @@ export const startInterview = async (req, res, next) => {
       },
     });
   } catch (error) {
+    console.log("Start Interview Error:", error);
+
     return next(error);
   }
 };
@@ -238,12 +215,10 @@ export const submitGuestAnswer = async (req, res, next) => {
         .json({ status: "fail", message: "Session not found" });
 
     if (interview.status === "completed") {
-      return res
-        .status(400)
-        .json({
-          status: "fail",
-          message: "This session is already closed and evaluated",
-        });
+      return res.status(400).json({
+        status: "fail",
+        message: "This session is already closed and evaluated",
+      });
     }
 
     const questionText = interview.questions[questionIndex];
