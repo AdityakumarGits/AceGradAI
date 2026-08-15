@@ -1,11 +1,12 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
 import {
-  generateInterviewQuestions,
+  generateNextQuestion,
   evaluateInterviewSession,
 } from "../services/gemini.service.js";
 import multer from "multer";
-import pdfParse from "pdf-parse";
+
+import { PDFParse } from "pdf-parse";
 /**
  * @route   POST /api/v1/interview/startInterview
  * @desc    Creates a new interview session. Generates dynamic AI questions based on the job role.
@@ -85,7 +86,7 @@ export const startInterview = async (req, res, next) => {
       }
 
       // Resume text → Gemini → Questions
-      aiQuestions = await generateInterviewQuestions(
+      aiQuestions = await generateNextQuestion(
         resumeText,
         experienceLevel,
       );
