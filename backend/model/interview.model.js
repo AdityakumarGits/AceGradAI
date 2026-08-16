@@ -63,7 +63,7 @@ candidateEmail: {
     enum: ["fresher", "junior", "mid", "senior"], // apne actual values daalo
     required: [true, "Experience level is required"],
 },
-questionSource: {
+questionSources: {
   type: String,
   enum: ["jd", "topics", "resume"],
   required: [true, "Question source is required"],
@@ -96,7 +96,7 @@ questionSource: {
     },
 
     // 8. Meta Tagging Data: Fallback descriptor matrix to tag specific technologies checked out
-    techStack: {
+    topics: {
       type: [String],
       default: [], // Starts as empty array so runtime creation validations don't block request threads
     },

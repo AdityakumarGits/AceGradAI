@@ -1,12 +1,17 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
 import {
-  generateNextQuestion,
+generateInterviewQuestions,
   evaluateInterviewSession,
+  //generateInterviewQuestions,
+  generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
 import axios from "axios";
-
 import { PDFParse } from "pdf-parse";
+import { DeepgramClient } from "@deepgram/sdk";
+const deepgram = new DeepgramClient({
+  apiKey: process.env.DEEPGRAM_API_KEY,
+});
 /**
  * @route   POST /api/v1/interview/startInterview
  * @desc    Creates a new interview session. Generates dynamic AI questions based on the job role.
@@ -18,7 +23,6 @@ export const startInterview = async (req, res, next) => {
     const {
       questionsSources,
       topics,
-      resumeFile,
       jobTitle,
       jobDescription,
       experienceLevel,
@@ -76,20 +80,17 @@ export const startInterview = async (req, res, next) => {
       );
     } else if (questionsSources === "resume") {
       // PDF Buffer → Text
-      const parsedPdf = await PDFParse(req.file.buffer);
-
-      const resumeText = parsedPdf.text?.trim();
+      const parser = new PDFParse({ data: req.file.buffer })
+      const result = await parser.getText();
+      const resumeText = result.text?.trim();
       if (!resumeText) {
         return next(
           new AppError("Could not extract text from resume PDF", 400),
         );
       }
-
+      await parser.destroy();
       // Resume text → Gemini → Questions
-      aiQuestions = await generateNextQuestion(
-        resumeText,
-        experienceLevel,
-      );
+      aiQuestions = await generateNextQuestion(resumeText, experienceLevel);
     }
     // Invalid source
     else {
@@ -106,25 +107,25 @@ export const startInterview = async (req, res, next) => {
 
     // 5. Save interview
     const newInterview = await Interview.create({
-  userId,
+      userId,
 
-  jobTitle: questionsSources === "jd" ? jobTitle : undefined,
-  jobDescription: questionsSources === "jd" ? jobDescription : undefined,
+      jobTitle: questionsSources === "jd" ? jobTitle : undefined,
+      jobDescription: questionsSources === "jd" ? jobDescription : undefined,
 
-  techStack: questionsSources === "topics" ? topics : [],
-  // resumeText yahan nahi hai — schema me field nahi hai, aur sirf Gemini-prompt ke liye chahiye tha, save nahi karna
+      topics: questionsSources === "topics" ? topics : [],
+      // resumeText yahan nahi hai — schema me field nahi hai, aur sirf Gemini-prompt ke liye chahiye tha, save nahi karna
 
-  experienceLevel,
-  questionSource: questionsSources, // consistent naam — schema-field 'questionSource' hai, local-variable 'questionsSources' hai
+      experienceLevel,
+      questionSource: questionsSources, // consistent naam — schema-field 'questionSource' hai, local-variable 'questionsSources' hai
 
-  questions: aiQuestions,
-  interviewType: interviewType || "practice",
-  candidateName: interviewType === "campaign" ? candidateName : undefined,
-  candidateEmail: interviewType === "campaign" ? candidateEmail : undefined,
+      questions: aiQuestions,
+      interviewType: interviewType || "practice",
+      candidateName: interviewType === "campaign" ? candidateName : undefined,
+      candidateEmail: interviewType === "campaign" ? candidateEmail : undefined,
 
-  accessOtp: generatedOtp,
-  status: "pending",
-});
+      accessOtp: generatedOtp,
+      status: "pending",
+    });
 
     // 6. Response
     res.status(201).json({
@@ -138,7 +139,6 @@ export const startInterview = async (req, res, next) => {
     });
   } catch (error) {
     console.log("Start Interview Error:", error);
-
     return next(error);
   }
 };
@@ -216,7 +216,7 @@ export const textToSpeech = async (req, res, next) => {
           "Content-Type": "application/json",
         },
         responseType: "arraybuffer", // IMPORTANT — socho kyun neeche
-      }
+      },
     );
 
     // 3. Raw audio-bytes ko base64 me convert karo
@@ -295,8 +295,8 @@ export const submitGuestAnswer = async (req, res, next) => {
  */
 export const submitAnswer = async (req, res, next) => {
   try {
-    const { interviewId, questionIndex, userAnswer } = req.body;
-    if (!interviewId || questionIndex === undefined || !userAnswer) {
+    const { interviewId, questionIndex } = req.body;
+    if (!interviewId || questionIndex === undefined) {
       return next(
         new AppError(
           "Interview ID, Question Index, and User Answer are required",
@@ -304,8 +304,10 @@ export const submitAnswer = async (req, res, next) => {
         ),
       );
     }
-
-    // Scope validation matrix ensures mapping ownership strictly matches the logged-in token
+    if (!req.file) {
+      return next(new AppError("Audio answer file is required", 400));
+    }
+    // Scope validation — ownership check
     const interview = await Interview.findOne({
       _id: interviewId,
       userId: req.user.id,
@@ -316,21 +318,46 @@ export const submitAnswer = async (req, res, next) => {
         new AppError("Invalid Interview Session or Unauthorized access", 404),
       );
     }
-
-    const questionText = interview.questions[questionIndex];
+    const parsedQuestionIndex = Number(questionIndex);
+    const questionText = interview.questions[parsedQuestionIndex];
     if (!questionText) {
       return next(new AppError("Invalid question index provided", 400));
     }
-    if (!questionText) {
-      return res
-        .status(400)
-        .json({ status: "fail", message: "Invalid question index provided" });
+
+    const alreadyAnswered = interview.answers.some(
+      (a) => a.questionIndex === parsedQuestionIndex,
+    );
+    if (alreadyAnswered) {
+      return next(new AppError("This question has already been answered", 400));
+    }
+    // Deepgram ko audio-buffer bhejo, transcript nikaalo
+    const { result, error: deepgramError } =
+      await deepgram.listen.v1.media.transcribeFile(req.file.buffer, {
+        model: "nova-3",
+        smart_format: true,
+      });
+
+    if (deepgramError) {
+      console.error("❌ Deepgram Error:", deepgramError);
+      return next(new AppError("Failed to transcribe audio answer", 500));
+    }
+
+    const transcript =
+      result?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
+
+    if (!transcript) {
+      return next(
+        new AppError(
+          "No speech detected in the audio. Please try answering again.",
+          400,
+        ),
+      );
     }
 
     interview.answers.push({
-      questionIndex,
+      questionIndex: parsedQuestionIndex,
       questionText,
-      userAnswer,
+      userAnswer: transcript,
     });
 
     await interview.save();
@@ -340,6 +367,7 @@ export const submitAnswer = async (req, res, next) => {
       message: "Answer submitted successfully",
       data: {
         answersCount: interview.answers.length,
+        transcript,
       },
     });
   } catch (error) {
