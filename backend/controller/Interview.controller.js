@@ -3,7 +3,7 @@ import AppError from "../utils/appError.js";
 import {
 generateInterviewQuestions,
   evaluateInterviewSession,
-  //generateInterviewQuestions,
+   generateResumeInterviewQuestions,
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
 import axios from "axios";
@@ -90,7 +90,7 @@ export const startInterview = async (req, res, next) => {
       }
       await parser.destroy();
       // Resume text → Gemini → Questions
-      aiQuestions = await generateNextQuestion(resumeText, experienceLevel);
+      aiQuestions = await  generateResumeInterviewQuestions(resumeText, experienceLevel);
     }
     // Invalid source
     else {
