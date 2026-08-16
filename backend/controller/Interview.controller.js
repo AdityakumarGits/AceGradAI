@@ -4,7 +4,7 @@ import {
   generateNextQuestion,
   evaluateInterviewSession,
 } from "../services/gemini.service.js";
-import multer from "multer";
+import axios from "axios";
 
 import { PDFParse } from "pdf-parse";
 /**
@@ -76,7 +76,7 @@ export const startInterview = async (req, res, next) => {
       );
     } else if (questionsSources === "resume") {
       // PDF Buffer → Text
-      const parsedPdf = await pdfParse(req.file.buffer);
+      const parsedPdf = await PDFParse(req.file.buffer);
 
       const resumeText = parsedPdf.text?.trim();
       if (!resumeText) {
@@ -191,6 +191,47 @@ export const verifyInterviewOtp = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const textToSpeech = async (req, res, next) => {
+  try {
+    const { text } = req.body;
+
+    // 1. Validation — text missing ho to 400
+    if (!text) {
+      return next(new AppError("Text is required for speech generation", 400));
+    }
+
+    // 2. ElevenLabs API ko call karo
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
+      {
+        text: text,
+        model_id: "eleven_monolingual_v1",
+      },
+      {
+        headers: {
+          "xi-api-key": process.env.ELEVENLABS_API_KEY,
+          "Content-Type": "application/json",
+        },
+        responseType: "arraybuffer", // IMPORTANT — socho kyun neeche
+      }
+    );
+
+    // 3. Raw audio-bytes ko base64 me convert karo
+    const audioBase64 = Buffer.from(response.data).toString("base64");
+
+    // 4. Frontend ko bhejo
+    res.status(200).json({
+      status: "success",
+      data: {
+        audioContent: audioBase64,
+      },
+    });
+  } catch (error) {
+    console.error("❌ ElevenLabs TTS Error:", error.message);
+    return next(new AppError("Failed to generate speech", 500));
   }
 };
 

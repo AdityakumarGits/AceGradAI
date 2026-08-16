@@ -14,6 +14,7 @@ route.post("/submitGuestAnswer", submitGuestAnswer);
 
 // 🔒 PROTECTED ROUTES (Requires Login JWT Token)
 route.post("/startInterview",protect,multer,startInterview);
+router.post('/textToSpeech', protect, textToSpeech);
 route.post("/submitAnswer",protect,submitAnswer);
 route.post("/endInterview", protect, endInterview);
 route.get("/getAllInterviews", protect, getAllInterviews);

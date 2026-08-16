@@ -1,116 +1,118 @@
 import ai from "../config/gemini.config.js";
 
 /**
- * questionSource ke hisaab se candidate-context ka readable description banata hai.
- * Ye teeno modes (jd / topics / resume) ke liye ek common prompt-building-block hai.
+ * JD-based: 5 technical questions ek saath generate karta hai job-title/description se.
  */
-const buildContextDescription = ({
-  questionSource,
-  jobTitle,
-  jobDescription,
-  topics,
-  resumeText,
-  experienceLevel,
-}) => {
-  if (questionSource === "jd") {
-    return `Job Title: ${jobTitle}\nJob Description: ${jobDescription}\nExperience Level: ${experienceLevel}`;
-  }
-  if (questionSource === "topics") {
-    return `Topics selected by candidate: ${topics.join(", ")}\nExperience Level: ${experienceLevel}`;
-  }
-  if (questionSource === "resume") {
-    return `Candidate's Resume Content:\n${resumeText}\nExperience Level: ${experienceLevel}`;
-  }
-  throw new Error(`Invalid questionSource passed to Gemini service: ${questionSource}`);
+export const generateInterviewQuestions = async (jobTitle, jobDescription, experienceLevel) => {
+    try {
+        const systemInstruction = `
+            You are an expert technical interviewer and senior software engineer at a top-tier tech company (like Google or Meta).
+            Your task is to generate exactly 5 relevant, highly specific technical interview questions tailored for a candidate.
+            
+            Strictly adhere to the candidate's profile:
+            - Job Title: ${jobTitle}
+            - Job Description/Context: ${jobDescription}
+            - Experience Level: ${experienceLevel}
+            
+            Return the output strictly as a JSON array of strings, where each string is a single technical question.
+            Do not include any introductory or concluding text, no markdown formatting (like \`\`\`json), just the raw JSON array.
+            Example Format: ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 technical interview questions for a ${experienceLevel} ${jobTitle} based on this description: ${jobDescription}`,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+            }
+        });
+
+        const questionsArray = JSON.parse(response.text);
+        return questionsArray;
+
+    } catch (error) {
+        console.error("❌ Gemini API Error (JD):", error);
+        throw new Error("Failed to generate questions via Gemini AI");
+    }
 };
 
 /**
- * Ek baar me EK question generate karta hai — adaptive/live-interview ke liye.
- * previousQA khaali ho to ye PEHLA question banata hai.
- * previousQA me history ho to, pichle answer ke hisaab se AGLA question banata hai.
- *
- * @param {Object} params
- * @param {String} params.questionSource - "jd" | "topics" | "resume"
- * @param {String} [params.jobTitle]
- * @param {String} [params.jobDescription]
- * @param {Array<String>} [params.topics]
- * @param {String} [params.resumeText]
- * @param {String} params.experienceLevel
- * @param {Array<{questionText: String, userAnswer: String}>} [params.previousQA]
- * @returns {Promise<String>} agla interview-question
+ * Topics-based: 5 technical questions ek saath generate karta hai candidate ke selected-topics se.
  */
-export const generateNextQuestion = async ({
-  questionSource,
-  jobTitle,
-  jobDescription,
-  topics,
-  resumeText,
-  experienceLevel,
-  previousQA = [],
-}) => {
-  try {
-    const contextDescription = buildContextDescription({
-      questionSource,
-      jobTitle,
-      jobDescription,
-      topics,
-      resumeText,
-      experienceLevel,
-    });
+export const generateTopicInterviewQuestions = async (topics, experienceLevel) => {
+    try {
+        const topicsList = Array.isArray(topics) ? topics.join(", ") : topics;
 
-    const isFirstQuestion = previousQA.length === 0;
+        const systemInstruction = `
+            You are an expert technical interviewer and senior software engineer at a top-tier tech company (like Google or Meta).
+            Your task is to generate exactly 5 relevant, highly specific technical interview questions tailored for a candidate.
 
-    const historyText = isFirstQuestion
-      ? "This is the first question of the interview — no history yet."
-      : previousQA
-          .map(
-            (qa, i) =>
-              `Q${i + 1}: ${qa.questionText}\nCandidate's Answer: ${qa.userAnswer}`,
-          )
-          .join("\n\n");
+            Strictly adhere to the candidate's profile:
+            - Topics selected by candidate: ${topicsList}
+            - Experience Level: ${experienceLevel}
 
-    const systemInstruction = `
-      You are an expert technical interviewer and senior software engineer at a top-tier tech company (like Google or Meta).
-      You are conducting a LIVE, ADAPTIVE technical interview — one question at a time.
+            Return the output strictly as a JSON array of strings, where each string is a single technical question.
+            Do not include any introductory or concluding text, no markdown formatting (like \`\`\`json), just the raw JSON array.
+            Example Format: ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]
+        `;
 
-      Candidate context:
-      ${contextDescription}
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 technical interview questions for a ${experienceLevel} candidate covering these topics: ${topicsList}`,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+            }
+        });
 
-      Interview so far:
-      ${historyText}
+        const questionsArray = JSON.parse(response.text);
+        return questionsArray;
 
-      ${
-        isFirstQuestion
-          ? "Generate the FIRST technical interview question based on the candidate context above."
-          : "Based on the candidate's most recent answer, generate the NEXT technical interview question. If the previous answer was strong, probe deeper into that same area. If it was weak or shallow, test a related fundamental concept instead. Do not repeat any previous question, and keep it relevant to the candidate's context."
-      }
-
-      Return the output strictly as a raw JSON object with exactly this shape (no markdown formatting, no extra text):
-      { "question": "<the next interview question as a single string>" }
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: isFirstQuestion
-        ? "Generate the first technical interview question for this candidate."
-        : "Generate the next adaptive technical interview question based on the candidate's previous answer.",
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-      },
-    });
-
-    const parsed = JSON.parse(response.text);
-
-    if (!parsed.question) {
-      throw new Error("Gemini response did not contain a 'question' field");
+    } catch (error) {
+        console.error("❌ Gemini API Error (Topics):", error);
+        throw new Error("Failed to generate topic-based questions via Gemini AI");
     }
+};
 
-    return parsed.question;
-  } catch (error) {
-    console.error("❌ Gemini Question-Generation Error:", error);
-    throw new Error("Failed to generate next question via Gemini AI");
-  }
+/**
+ * Resume-based: 5 technical questions ek saath generate karta hai resume-text se.
+ * NOTE: naam 'generateNextQuestion' hai (controller isi naam se import/call karta hai),
+ * lekin ye batch-model me 5-questions-ka-array return karta hai, single-question nahi.
+ */
+export const generateNextQuestion = async (resumeText, experienceLevel) => {
+    try {
+        const systemInstruction = `
+            You are an expert technical interviewer and senior software engineer at a top-tier tech company (like Google or Meta).
+            Your task is to generate exactly 5 relevant, highly specific technical interview questions tailored for a candidate,
+            based on the skills, projects, and experience mentioned in their resume.
+
+            Candidate's Resume Content:
+            ${resumeText}
+
+            Experience Level: ${experienceLevel}
+
+            Return the output strictly as a JSON array of strings, where each string is a single technical question.
+            Do not include any introductory or concluding text, no markdown formatting (like \`\`\`json), just the raw JSON array.
+            Example Format: ["Question 1", "Question 2", "Question 3", "Question 4", "Question 5"]
+        `;
+
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Generate 5 technical interview questions for a ${experienceLevel} candidate based on this resume content: ${resumeText}`,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+            }
+        });
+
+        const questionsArray = JSON.parse(response.text);
+        return questionsArray;
+
+    } catch (error) {
+        console.error("❌ Gemini API Error (Resume):", error);
+        throw new Error("Failed to generate resume-based questions via Gemini AI");
+    }
 };
 
 /**
@@ -119,35 +121,36 @@ export const generateNextQuestion = async ({
  * @returns {Promise<Object>} Structured Evaluation JSON Object
  */
 export const evaluateInterviewSession = async (qaData) => {
-  try {
-    const systemInstruction = `
-      You are a Principal Technical Recruiter and Engineering Manager. 
-      Your task is to critically evaluate a candidate's interview responses.
-      
-      Analyze the provided array of questions and candidate answers. 
-      Judge them based on technical correctness, depth of knowledge, and clarity.
+    try {
+        const systemInstruction = `
+            You are a Principal Technical Recruiter and Engineering Manager. 
+            Your task is to critically evaluate a candidate's interview responses.
+            
+            Analyze the provided array of questions and candidate answers. 
+            Judge them based on technical correctness, depth of knowledge, and clarity.
 
-      You MUST strictly return the output as a raw JSON object with the exact following keys (no markdown formatting like \`\`\`json, no wrapper text):
-      {
-          "overallScore": <Number between 1 and 10 based on cumulative performance>,
-          "feedbackSummary": "<A detailed editorial paragraph summing up strengths, structural mistakes, and areas of improvements>",
-          "skillsAssessment": ["Array of short metric tags highlighting skills, e.g., 'Strong: Async Patterns', 'Weak: Database Indexing'"]
-      }
-    `;
+            You MUST strictly return the output as a raw JSON object with the exact following keys (no markdown formatting like \`\`\`json, no wrapper text):
+            {
+                "overallScore": <Number between 1 and 10 based on cumulative performance>,
+                "feedbackSummary": "<A detailed editorial paragraph summing up strengths, structural mistakes, and areas of improvements>",
+                "skillsAssessment": ["Array of short metric tags highlighting skills, e.g., 'Strong: Async Patterns', 'Weak: Database Indexing'"]
+            }
+        `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: `Evaluate this interview session data and provide the structured report: ${JSON.stringify(qaData)}`,
-      config: {
-        systemInstruction: systemInstruction,
-        responseMimeType: "application/json",
-      },
-    });
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: `Evaluate this interview session data and provide the structured report: ${JSON.stringify(qaData)}`,
+            config: {
+                systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+            }
+        });
 
-    const evaluationResult = JSON.parse(response.text);
-    return evaluationResult;
-  } catch (error) {
-    console.error("❌ Gemini Evaluation Error:", error);
-    throw new Error("AI evaluation routine failed on the engine level");
-  }
+        const evaluationResult = JSON.parse(response.text);
+        return evaluationResult;
+
+    } catch (error) {
+        console.error("❌ Gemini Evaluation Error:", error);
+        throw new Error("AI evaluation routine failed on the engine level");
+    }
 };
