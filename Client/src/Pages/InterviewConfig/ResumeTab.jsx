@@ -1,9 +1,6 @@
 import { Upload, FileText, X } from "lucide-react";
-import DifficultySelector from "./DifficultySelector";
 
 export default function ResumeTab({
-  selectedDifficulty,
-  onSelectDifficulty,
   resumeFile,
   onResumeFileChange,
 }) {
@@ -12,13 +9,17 @@ export default function ResumeTab({
 
     if (!file) return;
 
+    // PDF only
     if (file.type !== "application/pdf") {
       onResumeFileChange(null);
+      e.target.value = "";
       return;
     }
 
+    // Maximum 5MB
     if (file.size > 5 * 1024 * 1024) {
       onResumeFileChange(null);
+      e.target.value = "";
       return;
     }
 
@@ -31,6 +32,8 @@ export default function ResumeTab({
 
   return (
     <div className="space-y-5">
+
+      {/* Upload Area */}
       <label
         htmlFor="resume-upload"
         className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[rgba(255,255,255,0.15)] bg-[#030712]/40 px-6 py-10 text-center transition hover:border-[#d90000]/50"
@@ -41,7 +44,7 @@ export default function ResumeTab({
         />
 
         <p className="text-sm font-medium text-[#eaecf0]">
-          Click to upload
+          Click to upload or drag & drop
         </p>
 
         <p className="mt-1 text-xs text-[rgba(234,236,240,0.5)]">
@@ -57,15 +60,19 @@ export default function ResumeTab({
         />
       </label>
 
+      {/* Selected Resume */}
       {resumeFile && (
         <div className="flex items-center justify-between rounded-xl border border-[#6366f1]/30 bg-[#6366f1]/10 px-4 py-3">
+
           <div className="flex min-w-0 items-center gap-3">
+
             <FileText
               size={20}
               className="shrink-0 text-[#6366f1]"
             />
 
             <div className="min-w-0">
+
               <p className="truncate text-sm font-medium text-[#eaecf0]">
                 {resumeFile.name}
               </p>
@@ -73,6 +80,7 @@ export default function ResumeTab({
               <p className="text-xs text-[rgba(234,236,240,0.5)]">
                 {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
               </p>
+
             </div>
           </div>
 
@@ -83,13 +91,10 @@ export default function ResumeTab({
           >
             <X size={16} />
           </button>
+
         </div>
       )}
 
-      <DifficultySelector
-        selected={selectedDifficulty}
-        onSelect={onSelectDifficulty}
-      />
     </div>
   );
 }
