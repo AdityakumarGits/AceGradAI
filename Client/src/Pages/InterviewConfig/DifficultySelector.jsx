@@ -1,4 +1,17 @@
-import { DIFFICULTY_LEVELS } from "./constant";
+const DIFFICULTY_LEVELS = [
+  {
+    value: "fresher",
+    label: "Easy",
+  },
+  {
+    value: "junior",
+    label: "Medium",
+  },
+  {
+    value: "senior",
+    label: "Hard",
+  },
+];
 
 export default function DifficultySelector({ selected, onSelect }) {
   return (
@@ -6,6 +19,7 @@ export default function DifficultySelector({ selected, onSelect }) {
       <label className="mb-2 block text-sm font-medium text-[#eaecf0]">
         Difficulty Level
       </label>
+
       <div className="grid grid-cols-3 gap-3">
         {DIFFICULTY_LEVELS.map((level) => (
           <button

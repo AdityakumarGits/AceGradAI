@@ -10,9 +10,3 @@ export const TOPIC_SUGGESTIONS = [
   "React", "Node.js", "JavaScript", "System Design",
   "DSA", "MongoDB", "Python", "SQL", "DevOps", "TypeScript",
 ];
-
-export const DIFFICULTY_LEVELS = [
-  { label: "Easy", value: "easy" },
-  { label: "Medium", value: "medium" },
-  { label: "Hard", value: "hard" },
-];
