@@ -1,22 +1,38 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
+
 import {
-generateInterviewQuestions,
+  generateInterviewQuestions,
   evaluateInterviewSession,
-   generateResumeInterviewQuestions,
+  generateResumeInterviewQuestions,
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
+
 import axios from "axios";
 import { PDFParse } from "pdf-parse";
 import { DeepgramClient } from "@deepgram/sdk";
+
+// --------------------------------------------------
+// Deepgram Client
+// --------------------------------------------------
+
 const deepgram = new DeepgramClient({
   apiKey: process.env.DEEPGRAM_API_KEY,
 });
+
+// ==================================================
+// START INTERVIEW
+// ==================================================
+
 /**
  * @route   POST /api/v1/interview/startInterview
- * @desc    Creates a new interview session. Generates dynamic AI questions based on the job role.
- * If the mode is a 'campaign', it locks an administrative 6-digit verification code.
- * @access  Protected (Candidates / Recruiters)
+ * @desc    Creates a new interview session.
+ *          Questions are generated based on:
+ *          1. JD
+ *          2. Topics
+ *          3. Resume
+ *
+ * @access  Protected
  */
 export const startInterview = async (req, res, next) => {
   try {
@@ -31,476 +47,873 @@ export const startInterview = async (req, res, next) => {
       candidateEmail,
     } = req.body;
 
-    // 1. Common validation
+    // --------------------------------------------------
+    // 1. Common Validation
+    // --------------------------------------------------
+
     if (!questionsSources) {
-      return next(new AppError("Question source is required", 400));
-    }
-    if (!experienceLevel) {
-      return next(new AppError("Experience level is required", 400));
+      return next(
+        new AppError("Question source is required", 400)
+      );
     }
 
-    // JD Interview
+    if (!["jd", "topics", "resume"].includes(questionsSources)) {
+      return next(
+        new AppError(
+          "Invalid question source. Use jd, topics, or resume",
+          400
+        )
+      );
+    }
+
+    if (!experienceLevel) {
+      return next(
+        new AppError("Experience level is required", 400)
+      );
+    }
+
+    if (
+      !["fresher", "junior", "mid", "senior"].includes(
+        experienceLevel
+      )
+    ) {
+      return next(
+        new AppError(
+          "Invalid experience level",
+          400
+        )
+      );
+    }
+
+    // --------------------------------------------------
+    // 2. Source Specific Validation
+    // --------------------------------------------------
+
+    // JD
     if (questionsSources === "jd") {
-      if (!jobTitle || !jobDescription) {
+      if (!jobTitle?.trim() || !jobDescription?.trim()) {
         return next(
-          new AppError("Job Title and Job Description are required", 400),
+          new AppError(
+            "Job Title and Job Description are required",
+            400
+          )
         );
       }
     }
 
-    // Topic Interview
+    // Topics
     if (questionsSources === "topics") {
-      if (!topics || !Array.isArray(topics) || topics.length === 0) {
-        return next(new AppError("At least one topic is required", 400));
+      if (
+        !Array.isArray(topics) ||
+        topics.length === 0
+      ) {
+        return next(
+          new AppError(
+            "At least one topic is required",
+            400
+          )
+        );
       }
     }
+
+    // Resume
     if (questionsSources === "resume") {
       if (!req.file) {
-        return next(new AppError("Resume file is required", 400));
+        return next(
+          new AppError(
+            "Resume file is required",
+            400
+          )
+        );
       }
+
       if (req.file.mimetype !== "application/pdf") {
-        return next(new AppError("Only PDF resume is supported", 400));
+        return next(
+          new AppError(
+            "Only PDF resume is supported",
+            400
+          )
+        );
       }
     }
+
+    // --------------------------------------------------
+    // 3. Logged-in User
+    // --------------------------------------------------
 
     const userId = req.user.id;
 
+    // --------------------------------------------------
+    // 4. Generate AI Questions
+    // --------------------------------------------------
+
     let aiQuestions;
+
+    // ---------------------------------------------
+    // JD
+    // ---------------------------------------------
 
     if (questionsSources === "jd") {
       aiQuestions = await generateInterviewQuestions(
-        jobTitle,
-        jobDescription,
-        experienceLevel,
+        jobTitle.trim(),
+        jobDescription.trim(),
+        experienceLevel
       );
-    } else if (questionsSources === "topics") {
-      aiQuestions = await generateTopicInterviewQuestions(
-        topics,
-        experienceLevel,
-      );
-    } else if (questionsSources === "resume") {
-      // PDF Buffer → Text
-      const parser = new PDFParse({ data: req.file.buffer })
-      const result = await parser.getText();
-      const resumeText = result.text?.trim();
-      if (!resumeText) {
-        return next(
-          new AppError("Could not extract text from resume PDF", 400),
+    }
+
+    // ---------------------------------------------
+    // Topics
+    // ---------------------------------------------
+
+    else if (questionsSources === "topics") {
+      aiQuestions =
+        await generateTopicInterviewQuestions(
+          topics,
+          experienceLevel
         );
-      }
-      await parser.destroy();
-      // Resume text → Gemini → Questions
-      aiQuestions = await  generateResumeInterviewQuestions(resumeText, experienceLevel);
     }
-    // Invalid source
-    else {
+
+    // ---------------------------------------------
+    // Resume
+    // ---------------------------------------------
+
+    else if (questionsSources === "resume") {
+      let parser;
+
+      try {
+        parser = new PDFParse({
+          data: req.file.buffer,
+        });
+
+        const result = await parser.getText();
+
+        const resumeText =
+          result?.text?.trim();
+
+        if (!resumeText) {
+          return next(
+            new AppError(
+              "Could not extract text from resume PDF",
+              400
+            )
+          );
+        }
+
+        aiQuestions =
+          await generateResumeInterviewQuestions(
+            resumeText,
+            experienceLevel
+          );
+
+      } finally {
+        if (parser) {
+          await parser.destroy();
+        }
+      }
+    }
+
+    // --------------------------------------------------
+    // 5. Validate Gemini Response
+    // --------------------------------------------------
+
+    if (
+      !Array.isArray(aiQuestions) ||
+      aiQuestions.length === 0
+    ) {
       return next(
-        new AppError("Invalid question source. Use jd, topics, or resume", 400),
+        new AppError(
+          "AI failed to generate interview questions",
+          500
+        )
       );
     }
 
-    // 3. Conditional evaluation to lock an Access OTP if triggered by a corporate recruiter
+    // --------------------------------------------------
+    // 6. Campaign OTP
+    // --------------------------------------------------
+
     let generatedOtp = null;
+
     if (interviewType === "campaign") {
-      generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      generatedOtp = Math.floor(
+        100000 + Math.random() * 900000
+      ).toString();
     }
 
-    // 5. Save interview
-    const newInterview = await Interview.create({
-      userId,
+    // --------------------------------------------------
+    // 7. Create Interview
+    // --------------------------------------------------
 
-      jobTitle: questionsSources === "jd" ? jobTitle : undefined,
-      jobDescription: questionsSources === "jd" ? jobDescription : undefined,
+    const newInterview =
+      await Interview.create({
+        userId,
 
-      topics: questionsSources === "topics" ? topics : [],
-      // resumeText yahan nahi hai — schema me field nahi hai, aur sirf Gemini-prompt ke liye chahiye tha, save nahi karna
+        questionsSources,
 
-      experienceLevel,
-      questionSource: questionsSources, // consistent naam — schema-field 'questionSource' hai, local-variable 'questionsSources' hai
+        jobTitle:
+          questionsSources === "jd"
+            ? jobTitle.trim()
+            : undefined,
 
-      questions: aiQuestions,
-      interviewType: interviewType || "practice",
-      candidateName: interviewType === "campaign" ? candidateName : undefined,
-      candidateEmail: interviewType === "campaign" ? candidateEmail : undefined,
+        jobDescription:
+          questionsSources === "jd"
+            ? jobDescription.trim()
+            : undefined,
 
-      accessOtp: generatedOtp,
-      status: "pending",
-    });
+        topics:
+          questionsSources === "topics"
+            ? topics
+            : [],
 
-    // 6. Response
-    res.status(201).json({
+        experienceLevel,
+
+        questions: aiQuestions,
+
+        interviewType:
+          interviewType || "practice",
+
+        candidateName:
+          interviewType === "campaign"
+            ? candidateName
+            : undefined,
+
+        candidateEmail:
+          interviewType === "campaign"
+            ? candidateEmail
+            : undefined,
+
+        accessOtp: generatedOtp,
+
+        status: "pending",
+      });
+
+    // --------------------------------------------------
+    // 8. Response
+    // --------------------------------------------------
+
+    return res.status(201).json({
       status: "success",
-      message: "Interview session created successfully",
+      message:
+        "Interview session created successfully",
 
       data: {
         interview: newInterview,
         accessOtp: generatedOtp,
       },
     });
+
   } catch (error) {
-    console.log("Start Interview Error:", error);
+    console.error(
+      "❌ Start Interview Error:",
+      error
+    );
+
     return next(error);
   }
 };
 
-/**
- * @route   POST /api/v1/interview/verifyInterviewOtp
- * @desc    Validates guest candidate entry against the recruiter's locked 6-digit passcode.
- * @access  Public (Guest Candidates)
- */
-export const verifyInterviewOtp = async (req, res, next) => {
+// ==================================================
+// VERIFY CAMPAIGN OTP
+// ==================================================
+
+export const verifyInterviewOtp = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { interviewId, otp } = req.body;
+    const {
+      interviewId,
+      otp,
+    } = req.body;
 
     if (!interviewId || !otp) {
       return res.status(400).json({
         status: "fail",
-        message: "Interview ID and 6-digit OTP are required",
+        message:
+          "Interview ID and 6-digit OTP are required",
       });
     }
 
-    const interview = await Interview.findOne({ _id: interviewId });
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+      });
+
     if (!interview) {
-      return res
-        .status(404)
-        .json({ status: "fail", message: "Invalid or expired interview link" });
+      return res.status(404).json({
+        status: "fail",
+        message:
+          "Invalid or expired interview link",
+      });
     }
 
-    // Cryptographic string comparison guard for passcode checking
-    if (interview.accessOtp !== otp.toString()) {
-      return res
-        .status(401)
-        .json({ status: "fail", message: "Incorrect 6-digit access code" });
+    if (
+      interview.accessOtp !==
+      otp.toString()
+    ) {
+      return res.status(401).json({
+        status: "fail",
+        message:
+          "Incorrect 6-digit access code",
+      });
     }
 
-    // If verified for the first time, shift configuration state matrix to active
     if (interview.status === "pending") {
       interview.status = "active";
       await interview.save();
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      message: "Access granted successfully",
+      message:
+        "Access granted successfully",
+
       data: {
         interviewId: interview._id,
         jobTitle: interview.jobTitle,
-        candidateName: interview.candidateName,
+        candidateName:
+          interview.candidateName,
         hasAccessPassed: true,
       },
     });
+
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
-export const textToSpeech = async (req, res, next) => {
+// ==================================================
+// TEXT TO SPEECH
+// ==================================================
+
+export const textToSpeech = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { text } = req.body;
 
-    // 1. Validation — text missing ho to 400
     if (!text) {
-      return next(new AppError("Text is required for speech generation", 400));
+      return next(
+        new AppError(
+          "Text is required for speech generation",
+          400
+        )
+      );
     }
 
-    // 2. ElevenLabs API ko call karo
     const response = await axios.post(
       `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
       {
-        text: text,
-        model_id: "eleven_monolingual_v1",
+        text,
+        model_id:
+          "eleven_monolingual_v1",
       },
       {
         headers: {
-          "xi-api-key": process.env.ELEVENLABS_API_KEY,
-          "Content-Type": "application/json",
+          "xi-api-key":
+            process.env.ELEVENLABS_API_KEY,
+
+          "Content-Type":
+            "application/json",
         },
-        responseType: "arraybuffer", // IMPORTANT — socho kyun neeche
-      },
+
+        responseType:
+          "arraybuffer",
+      }
     );
 
-    // 3. Raw audio-bytes ko base64 me convert karo
-    const audioBase64 = Buffer.from(response.data).toString("base64");
+    const audioBase64 =
+      Buffer.from(
+        response.data
+      ).toString("base64");
 
-    // 4. Frontend ko bhejo
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
+
       data: {
         audioContent: audioBase64,
       },
     });
+
   } catch (error) {
-    console.error("❌ ElevenLabs TTS Error:", error.message);
-    return next(new AppError("Failed to generate speech", 500));
+    console.error(
+      "❌ ElevenLabs TTS Error:",
+      error.message
+    );
+
+    return next(
+      new AppError(
+        "Failed to generate speech",
+        500
+      )
+    );
   }
 };
 
-/**
- * @route   POST /api/v1/interview/submitGuestAnswer
- * @desc    Appends candidate responses directly using structural array pushing without profile tokens.
- * @access  Public (Guest Candidates)
- */
-export const submitGuestAnswer = async (req, res, next) => {
+// ==================================================
+// SUBMIT GUEST ANSWER
+// ==================================================
+
+export const submitGuestAnswer = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { interviewId, questionIndex, userAnswer } = req.body;
+    const {
+      interviewId,
+      questionIndex,
+      userAnswer,
+    } = req.body;
 
-    if (!interviewId || questionIndex === undefined || !userAnswer) {
-      return res
-        .status(400)
-        .json({ status: "fail", message: "Missing required fields" });
-    }
-
-    const interview = await Interview.findOne({ _id: interviewId });
-    if (!interview)
-      return res
-        .status(404)
-        .json({ status: "fail", message: "Session not found" });
-
-    if (interview.status === "completed") {
+    if (
+      !interviewId ||
+      questionIndex === undefined ||
+      !userAnswer
+    ) {
       return res.status(400).json({
         status: "fail",
-        message: "This session is already closed and evaluated",
+        message:
+          "Missing required fields",
       });
     }
 
-    const questionText = interview.questions[questionIndex];
-    const alreadyAnswered = interview.answers.some(
-      (a) => a.questionIndex === questionIndex,
-    );
-    if (alreadyAnswered) {
-      return next(new AppError("This question has already been answered", 400));
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+      });
+
+    if (!interview) {
+      return res.status(404).json({
+        status: "fail",
+        message:
+          "Session not found",
+      });
     }
+
+    if (
+      interview.status === "completed"
+    ) {
+      return res.status(400).json({
+        status: "fail",
+        message:
+          "This session is already closed and evaluated",
+      });
+    }
+
+    const parsedQuestionIndex =
+      Number(questionIndex);
+
+    const questionText =
+      interview.questions[
+        parsedQuestionIndex
+      ];
+
+    if (!questionText) {
+      return next(
+        new AppError(
+          "Invalid question index provided",
+          400
+        )
+      );
+    }
+
+    const alreadyAnswered =
+      interview.answers.some(
+        (answer) =>
+          answer.questionIndex ===
+          parsedQuestionIndex
+      );
+
+    if (alreadyAnswered) {
+      return next(
+        new AppError(
+          "This question has already been answered",
+          400
+        )
+      );
+    }
+
     interview.answers.push({
-      questionIndex,
+      questionIndex:
+        parsedQuestionIndex,
+
       questionText,
+
       userAnswer,
     });
 
     await interview.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      message: "Guest answer submitted successfully",
-      data: { answersCount: interview.answers.length },
+      message:
+        "Guest answer submitted successfully",
+
+      data: {
+        answersCount:
+          interview.answers.length,
+      },
     });
+
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
-/**
- * @route   POST /api/v1/interview/submitAnswer
- * @desc    Saves responses for individual internal profile candidates running mock trials.
- * @access  Protected (Logged-in Candidates)
- */
-export const submitAnswer = async (req, res, next) => {
+// ==================================================
+// SUBMIT ANSWER
+// ==================================================
+
+export const submitAnswer = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { interviewId, questionIndex } = req.body;
-    if (!interviewId || questionIndex === undefined) {
+    const {
+      interviewId,
+      questionIndex,
+    } = req.body;
+
+    if (
+      !interviewId ||
+      questionIndex === undefined
+    ) {
       return next(
         new AppError(
-          "Interview ID, Question Index, and User Answer are required",
-          400,
-        ),
+          "Interview ID and Question Index are required",
+          400
+        )
       );
     }
+
     if (!req.file) {
-      return next(new AppError("Audio answer file is required", 400));
+      return next(
+        new AppError(
+          "Audio answer file is required",
+          400
+        )
+      );
     }
-    // Scope validation — ownership check
-    const interview = await Interview.findOne({
-      _id: interviewId,
-      userId: req.user.id,
-    });
+
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+        userId: req.user.id,
+      });
 
     if (!interview) {
       return next(
-        new AppError("Invalid Interview Session or Unauthorized access", 404),
+        new AppError(
+          "Invalid Interview Session or Unauthorized access",
+          404
+        )
       );
     }
-    const parsedQuestionIndex = Number(questionIndex);
-    const questionText = interview.questions[parsedQuestionIndex];
+
+    const parsedQuestionIndex =
+      Number(questionIndex);
+
+    const questionText =
+      interview.questions[
+        parsedQuestionIndex
+      ];
+
     if (!questionText) {
-      return next(new AppError("Invalid question index provided", 400));
+      return next(
+        new AppError(
+          "Invalid question index provided",
+          400
+        )
+      );
     }
 
-    const alreadyAnswered = interview.answers.some(
-      (a) => a.questionIndex === parsedQuestionIndex,
-    );
+    const alreadyAnswered =
+      interview.answers.some(
+        (answer) =>
+          answer.questionIndex ===
+          parsedQuestionIndex
+      );
+
     if (alreadyAnswered) {
-      return next(new AppError("This question has already been answered", 400));
+      return next(
+        new AppError(
+          "This question has already been answered",
+          400
+        )
+      );
     }
-    // Deepgram ko audio-buffer bhejo, transcript nikaalo
-    const { result, error: deepgramError } =
-      await deepgram.listen.v1.media.transcribeFile(req.file.buffer, {
-        model: "nova-3",
-        smart_format: true,
-      });
+
+    // ---------------------------------------------
+    // Deepgram
+    // ---------------------------------------------
+
+    const {
+      result,
+      error: deepgramError,
+    } =
+      await deepgram.listen.v1.media.transcribeFile(
+        req.file.buffer,
+        {
+          model: "nova-3",
+          smart_format: true,
+        }
+      );
 
     if (deepgramError) {
-      console.error("❌ Deepgram Error:", deepgramError);
-      return next(new AppError("Failed to transcribe audio answer", 500));
+      console.error(
+        "❌ Deepgram Error:",
+        deepgramError
+      );
+
+      return next(
+        new AppError(
+          "Failed to transcribe audio answer",
+          500
+        )
+      );
     }
 
     const transcript =
-      result?.results?.channels?.[0]?.alternatives?.[0]?.transcript?.trim();
+      result?.results?.channels?.[0]
+        ?.alternatives?.[0]
+        ?.transcript?.trim();
 
     if (!transcript) {
       return next(
         new AppError(
           "No speech detected in the audio. Please try answering again.",
-          400,
-        ),
+          400
+        )
       );
     }
 
     interview.answers.push({
-      questionIndex: parsedQuestionIndex,
+      questionIndex:
+        parsedQuestionIndex,
+
       questionText,
+
       userAnswer: transcript,
     });
 
     await interview.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      message: "Answer submitted successfully",
+      message:
+        "Answer submitted successfully",
+
       data: {
-        answersCount: interview.answers.length,
+        answersCount:
+          interview.answers.length,
+
         transcript,
       },
     });
+
   } catch (error) {
+    console.error(
+      "❌ Submit Answer Error:",
+      error
+    );
+
     return next(error);
   }
 };
 
-/**
- * @route   POST /api/v1/interview/endInterview
- * @desc    Closes active execution loops. Triggers telemetry parsing with Gemini to build deep metric results.
- * @access  Universal Controller Interface Endpoint
- */
-export const endInterview = async (req, res, next) => {
+// ==================================================
+// END INTERVIEW
+// ==================================================
+
+export const endInterview = async (
+  req,
+  res,
+  next
+) => {
   try {
     const { interviewId } = req.body;
 
     if (!interviewId) {
       return next(
-        new AppError("Interview ID is required to process evaluation", 400),
+        new AppError(
+          "Interview ID is required to process evaluation",
+          400
+        )
       );
     }
 
-    // Flexible lookup: Allows parsing if it belongs to a registered candidate, or matches public criteria
-    const interview = await Interview.findOne({
-      _id: interviewId,
-      userId: req.user.id,
-    });
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+        userId: req.user.id,
+      });
+
     if (!interview) {
       return next(
-        new AppError("No active session found with the provided ID", 404),
+        new AppError(
+          "No active session found with the provided ID",
+          404
+        )
       );
     }
 
-    // Protection block to safeguard compute cost and prevent double evaluations
-    if (interview.status === "completed") {
+    if (
+      interview.status === "completed"
+    ) {
       return next(
         new AppError(
           "This interview session has already been evaluated and closed",
-          400,
-        ),
+          400
+        )
       );
     }
 
-    if (!interview.answers || interview.answers.length === 0) {
+    if (
+      !interview.answers ||
+      interview.answers.length === 0
+    ) {
       return next(
         new AppError(
           "Cannot evaluate an interview session with zero submissions",
-          400,
-        ),
+          400
+        )
       );
     }
 
-    // Format clean evaluation payload payload arrays
-    const qaPayload = interview.answers.map((item) => ({
-      questionText: item.questionText,
-      userAnswer: item.userAnswer,
-    }));
+    const qaPayload =
+      interview.answers.map(
+        (item) => ({
+          questionText:
+            item.questionText,
 
-    // Execute background call to Google Gemini Analytics Model API
-    const aiEvaluationReport = await evaluateInterviewSession(qaPayload);
+          userAnswer:
+            item.userAnswer,
+        })
+      );
 
-    // Bind the processed telemetry payload back into document memory structures
-    interview.evaluation = aiEvaluationReport;
-    interview.status = "completed";
+    const aiEvaluationReport =
+      await evaluateInterviewSession(
+        qaPayload
+      );
+
+    interview.evaluation =
+      aiEvaluationReport;
+
+    interview.status =
+      "completed";
 
     await interview.save();
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      message: "Interview evaluated successfully and session has been closed",
+      message:
+        "Interview evaluated successfully and session has been closed",
+
       data: {
-        evaluation: interview.evaluation,
-        status: interview.status,
+        evaluation:
+          interview.evaluation,
+
+        status:
+          interview.status,
       },
     });
+
   } catch (error) {
+    console.error(
+      "❌ End Interview Error:",
+      error
+    );
+
     return next(error);
   }
 };
 
-/**
- * @route   GET /api/v1/interview/getAllInterviews
- * @desc    Provides full metric logging streams tailored to specific tracking view profiles (Recruiter / Candidate).
- * @access  Protected (Authenticated Profiles Only)
- */
-export const getAllInterviews = async (req, res, next) => {
-  try {
-    let query = { userId: req.user.id };
+// ==================================================
+// GET ALL INTERVIEWS
+// ==================================================
 
-    // Separation engine: Filters target output logs based on business interface metrics
+export const getAllInterviews = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    let query = {
+      userId: req.user.id,
+    };
+
     if (req.user.role === "recruiter") {
-      query.interviewType = "campaign";
+      query.interviewType =
+        "campaign";
     } else {
-      query.interviewType = "practice";
+      query.interviewType =
+        "practice";
     }
 
-    const interviews = await Interview.find(query)
-      .select(
-        "jobTitle experienceLevel status evaluation.overallScore candidateName candidateEmail createdAt",
-      )
-      .sort({ createdAt: -1 });
+    const interviews =
+      await Interview.find(query)
+        .select(
+          "questionsSources jobTitle experienceLevel status evaluation.overallScore candidateName candidateEmail createdAt"
+        )
+        .sort({
+          createdAt: -1,
+        });
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
       results: interviews.length,
-      data: { interviews },
+
+      data: {
+        interviews,
+      },
     });
+
   } catch (error) {
     return next(error);
   }
 };
 
-/**
- * @route   GET /api/v1/interview/getInterviewDetails/:interviewId
- * @desc    Provides full historical details of a single specific interview document instance.
- * @access  Protected
- */
-export const getInterviewDetails = async (req, res, next) => {
+// ==================================================
+// GET INTERVIEW DETAILS
+// ==================================================
+
+export const getInterviewDetails = async (
+  req,
+  res,
+  next
+) => {
   try {
-    const { interviewId } = req.params;
-    const interview = await Interview.findOne({
-      _id: interviewId,
-      userId: req.user.id,
-    });
+    const { interviewId } =
+      req.params;
+
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+        userId: req.user.id,
+      });
 
     if (!interview) {
-      return next(new AppError("No interview session found with that ID", 404));
+      return next(
+        new AppError(
+          "No interview session found with that ID",
+          404
+        )
+      );
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       status: "success",
-      data: { interview },
+
+      data: {
+        interview,
+      },
     });
+
   } catch (error) {
     return next(error);
   }

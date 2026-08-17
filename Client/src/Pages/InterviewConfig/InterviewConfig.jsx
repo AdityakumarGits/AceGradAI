@@ -61,21 +61,27 @@ export default function InterviewConfig({ onClose }) {
     e.preventDefault();
 
     if (loading) return;
-
-    if (!selectedDifficulty) {
-      candidateToast.error("Please select a difficulty level.");
-      return;
-    }
+// Only Topics requires difficulty selection
+  if (activeTab === "topics" && !selectedDifficulty) {
+    candidateToast.error("Please select a difficulty level.");
+    return;
+  }
 
     try {
       setLoading(true);
 
-      let response;
 
       // =====================================
       // JD INTERVIEW
       // =====================================
+const experienceLevel =
+      activeTab === "topics"
+        ? selectedDifficulty
+        : "junior";
 
+    let response;
+
+    //jd
       if (activeTab === "jd") {
         if (!jobTitle.trim()) {
           candidateToast.error("Please enter Job Title.");
@@ -88,7 +94,7 @@ export default function InterviewConfig({ onClose }) {
         }
 
         response = await API.post("/interview/startInterview", {
-          questionSource: "jd",
+          questionsSources: "jd",
           jobTitle: jobTitle.trim(),
           jobDescription: jobDescription.trim(),
           experienceLevel: "junior",
@@ -109,9 +115,9 @@ export default function InterviewConfig({ onClose }) {
         }
 
         response = await API.post("/interview/startInterview", {
-          questionSource: "topics",
+          questionsSources: "topics",
           topics: selectedTopics,
-          experienceLevel: selectedDifficulty,
+          experienceLevel,
           interviewType: "practice",
         });
       }
@@ -128,11 +134,8 @@ export default function InterviewConfig({ onClose }) {
 
         const formData = new FormData();
 
-        formData.append("questionSource", "resume");
-        formData.append(
-          "experienceLevel",
-          selectedDifficulty
-        );
+        formData.append("questionsSources", "resume");
+        formData.append( "experienceLevel", "junior");
         formData.append("interviewType", "practice");
         formData.append("resume", resumeFile);
 
@@ -166,7 +169,7 @@ export default function InterviewConfig({ onClose }) {
         state: {
           interviewId: interview._id,
           questions: interview.questions || [],
-          questionSource: interview.questionSource,
+          questionsSources: interview.questionsSources,
         },
       });
 
@@ -177,13 +180,18 @@ export default function InterviewConfig({ onClose }) {
         "Start Interview Error:",
         error
       );
+      console.log("STATUS:", error.response?.status);
+  console.log("BACKEND RESPONSE:", error.response?.data);
+  console.log("REQUEST DATA:", error.config?.data);
 
-      const message =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Failed to start interview.";
 
-      candidateToast.error(message);
+      // const message =
+      //   error?.response?.data?.message ||
+      //   error?.message ||
+      //   "Failed to start interview.";
+
+      candidateToast.error(error.response?.data?.message ||
+    "Failed to start interview.");
 
     } finally {
       setLoading(false);
