@@ -60,12 +60,13 @@ export default function InterviewSetup() {
     }
 
     // Topics
-    if (questionsSources === "topics") {
-      return (
-        Array.isArray(topics) &&
-        topics.length > 0
-      );
-    }
+   if (questionsSources === "topics") {
+  return (
+    Array.isArray(topics) &&
+    topics.length > 0 &&
+    ["fresher", "junior", "mid", "senior"].includes(experienceLevel)
+  );
+}
 
     // Resume
     if (questionsSources === "resume") {

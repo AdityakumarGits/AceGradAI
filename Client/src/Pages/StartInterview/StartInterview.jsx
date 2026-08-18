@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import QuestionDisplay from "./QuestionDisplay";
 import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
+
 import API from "../../services/api";
 
 export default function StartInterview() {
@@ -28,69 +30,49 @@ export default function StartInterview() {
   // STATE
   // =========================================================
 
-  const [currentQuestionIdx, setCurrentQuestionIdx] =
-    useState(0);
+  const [interviewID, setInterviewID] = useState("");
+  const [questions, setQuestions] = useState([]);
 
-  const [interviewID, setInterviewID] =
-    useState("");
-
-  const [questions, setQuestions] =
-    useState([]);
-
-  const [isSpeaking, setIsSpeaking] =
-    useState(false);
-
-  const [isRecording, setIsRecording] =
-    useState(false);
-
-  const [isSubmitting, setIsSubmitting] =
-    useState(false);
-
-  const [isComplete, setIsComplete] =
-    useState(false);
+  const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
 
   const [loadingDisplayQuestion, setLoadingDisplayQuestion] =
     useState(false);
 
-  const [errorMsg, setErrorMsg] =
-    useState(null);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [evaluation, setEvaluation] =
-    useState(null);
+  const [isComplete, setIsComplete] = useState(false);
+
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  const [evaluation, setEvaluation] = useState(null);
 
   // =========================================================
   // REFS
   // =========================================================
 
-  const mediaStreamRef =
-    useRef(null);
+  const mediaStreamRef = useRef(null);
 
-  const mediaRecorderRef =
-    useRef(null);
+  const mediaRecorderRef = useRef(null);
 
-  const audioChunksRef =
-    useRef([]);
+  const audioChunksRef = useRef([]);
 
-  const audioElementRef =
-    useRef(null);
+  const audioElementRef = useRef(null);
 
-  const audioContextRef =
-    useRef(null);
+  const audioUrlRef = useRef(null);
 
-  const analyserRef =
-    useRef(null);
+  const audioContextRef = useRef(null);
 
-  const animationFrameRef =
-    useRef(null);
+  const analyserRef = useRef(null);
 
-  const silenceTimerRef =
-    useRef(null);
+  const animationFrameRef = useRef(null);
 
-  const hasStartedRecordingRef =
-    useRef(false);
+  const hasStartedRecordingRef = useRef(false);
 
-  const isSubmittingRef =
-    useRef(false);
+  const isSubmittingRef = useRef(false);
+
+  const interviewStartedRef = useRef(false);
 
   // =========================================================
   // CONSTANTS
@@ -98,11 +80,22 @@ export default function StartInterview() {
 
   const SILENCE_DURATION = 8000;
 
+  // RMS threshold.
+  // Lower = more sensitive
+  // Higher = less sensitive
+  const SILENCE_THRESHOLD = 0.015;
+
   // =========================================================
   // 1. START INTERVIEW
   // =========================================================
 
   const handleStartInterview = async () => {
+    if (interviewStartedRef.current) {
+      return;
+    }
+
+    interviewStartedRef.current = true;
+
     setLoadingDisplayQuestion(true);
     setErrorMsg(null);
 
@@ -114,14 +107,21 @@ export default function StartInterview() {
       // =====================================================
 
       if (questionsSources === "jd") {
+        if (!jobTitle?.trim()) {
+          throw new Error("Job title is missing.");
+        }
+
+        if (!jobDescription?.trim()) {
+          throw new Error("Job description is missing.");
+        }
+
         response = await API.post(
           "/interview/startInterview",
           {
             questionsSources: "jd",
-            jobTitle,
-            jobDescription,
-            experienceLevel:
-              experienceLevel || "junior",
+            jobTitle: jobTitle.trim(),
+            jobDescription: jobDescription.trim(),
+            experienceLevel: experienceLevel || "junior",
             interviewType: "practice",
           }
         );
@@ -132,13 +132,18 @@ export default function StartInterview() {
       // =====================================================
 
       else if (questionsSources === "topics") {
+        if (!Array.isArray(topics) || topics.length === 0) {
+          throw new Error(
+            "At least one interview topic is required."
+          );
+        }
+
         response = await API.post(
           "/interview/startInterview",
           {
             questionsSources: "topics",
             topics,
-            experienceLevel:
-              experienceLevel || "junior",
+            experienceLevel: experienceLevel || "junior",
             interviewType: "practice",
           }
         );
@@ -150,13 +155,10 @@ export default function StartInterview() {
 
       else if (questionsSources === "resume") {
         if (!resumeFile) {
-          throw new Error(
-            "Resume file is missing."
-          );
+          throw new Error("Resume file is missing.");
         }
 
-        const formData =
-          new FormData();
+        const formData = new FormData();
 
         formData.append(
           "questionsSources",
@@ -198,6 +200,11 @@ export default function StartInterview() {
       // RESPONSE
       // =====================================================
 
+      console.log(
+        "Start Interview Response:",
+        response?.data
+      );
+
       const interview =
         response?.data?.data?.interview;
 
@@ -216,17 +223,25 @@ export default function StartInterview() {
         );
       }
 
-      setInterviewID(interview._id);
+      console.log(
+        "Interview ID:",
+        interview._id
+      );
 
-      setQuestions(
+      console.log(
+        "Questions:",
         interview.questions
       );
+
+      setInterviewID(interview._id);
+
+      setQuestions(interview.questions);
 
       setCurrentQuestionIdx(0);
 
     } catch (error) {
       console.error(
-        "Start Interview Error:",
+        "❌ Start Interview Error:",
         error
       );
 
@@ -246,13 +261,15 @@ export default function StartInterview() {
           "Interview start nahi ho paya."
       );
 
+      interviewStartedRef.current = false;
+
     } finally {
       setLoadingDisplayQuestion(false);
     }
   };
 
   // =========================================================
-  // 2. INITIALIZE INTERVIEW
+  // 2. INITIALIZE
   // =========================================================
 
   useEffect(() => {
@@ -272,21 +289,26 @@ export default function StartInterview() {
   }, []);
 
   // =========================================================
-  // 3. CURRENT QUESTION → TTS
+  // 3. QUESTION CHANGE → TTS
   // =========================================================
 
   useEffect(() => {
     if (
       questions.length === 0 ||
-      isComplete ||
-      !interviewID
+      !interviewID ||
+      isComplete
     ) {
       return;
     }
 
-    speakQuestion(
-      questions[currentQuestionIdx]
-    );
+    const question =
+      questions[currentQuestionIdx];
+
+    if (!question) {
+      return;
+    }
+
+    speakQuestion(question);
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -300,21 +322,43 @@ export default function StartInterview() {
   // 4. TEXT TO SPEECH
   // =========================================================
 
-  const speakQuestion = async (
-    questionText
-  ) => {
-    if (!questionText) return;
+  const speakQuestion = async (questionText) => {
+    if (!questionText) {
+      return;
+    }
 
     try {
       setErrorMsg(null);
+
       setIsSpeaking(true);
       setIsRecording(false);
 
+      // -----------------------------------------------------
       // Stop previous audio
+      // -----------------------------------------------------
+
       if (audioElementRef.current) {
         audioElementRef.current.pause();
         audioElementRef.current.currentTime = 0;
+        audioElementRef.current = null;
       }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(
+          audioUrlRef.current
+        );
+
+        audioUrlRef.current = null;
+      }
+
+      console.log(
+        "🔊 TTS Request:",
+        questionText
+      );
+
+      // -----------------------------------------------------
+      // Backend TTS
+      // -----------------------------------------------------
 
       const response = await API.post(
         "/interview/textToSpeech",
@@ -323,63 +367,117 @@ export default function StartInterview() {
         }
       );
 
-      /*
-        Backend response shape may differ slightly.
+      console.log(
+        "🔊 TTS Backend Response:",
+        response?.data
+      );
 
-        Expected examples:
-
-        response.data.data.audioBase64
-
-        OR
-
-        response.data.data.audio
-
-        OR
-
-        response.data.audioBase64
-      */
+      // -----------------------------------------------------
+      // Extract Azure audio
+      // -----------------------------------------------------
 
       const audioBase64 =
+        response?.data?.data?.audioContent ||
         response?.data?.data?.audioBase64 ||
         response?.data?.data?.audio ||
+        response?.data?.audioContent ||
         response?.data?.audioBase64 ||
         response?.data?.audio;
 
       if (!audioBase64) {
+        console.error(
+          "❌ Complete TTS response:",
+          response?.data
+        );
+
         throw new Error(
           "TTS audio data missing from backend response."
         );
       }
 
-      const audioBlob =
-        base64ToBlob(
-          audioBase64,
-          "audio/mpeg"
+      console.log(
+        "✅ Audio received. Base64 length:",
+        audioBase64.length
+      );
+
+      // -----------------------------------------------------
+      // Azure usually returns WAV when configured with
+      // Riff/PCM output.
+      // -----------------------------------------------------
+
+      const audioBlob = base64ToBlob(
+        audioBase64,
+        "audio/wav"
+      );
+
+      if (!audioBlob || audioBlob.size === 0) {
+        throw new Error(
+          "TTS audio blob is empty."
         );
+      }
+
+      console.log(
+        "✅ Audio Blob:",
+        audioBlob.size,
+        "bytes"
+      );
+
+      // -----------------------------------------------------
+      // Create Audio
+      // -----------------------------------------------------
 
       const audioUrl =
         URL.createObjectURL(audioBlob);
 
-      const audio =
-        new Audio(audioUrl);
+      audioUrlRef.current = audioUrl;
+
+      const audio = new Audio(audioUrl);
 
       audioElementRef.current = audio;
 
+      // -----------------------------------------------------
+      // Audio finished
+      // -----------------------------------------------------
+
       audio.onended = () => {
-        URL.revokeObjectURL(
-          audioUrl
+        console.log(
+          "🔊 Question audio finished."
         );
+
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(
+            audioUrlRef.current
+          );
+
+          audioUrlRef.current = null;
+        }
 
         setIsSpeaking(false);
 
-        // Question finished speaking
+        // ---------------------------------------------------
+        // TTS finished → candidate recording
+        // ---------------------------------------------------
+
         startRecording();
       };
 
-      audio.onerror = () => {
-        URL.revokeObjectURL(
-          audioUrl
+      // -----------------------------------------------------
+      // Audio error
+      // -----------------------------------------------------
+
+      audio.onerror = (event) => {
+        console.error(
+          "❌ Audio playback error:",
+          event
         );
+
+        if (audioUrlRef.current) {
+          URL.revokeObjectURL(
+            audioUrlRef.current
+          );
+
+          audioUrlRef.current = null;
+        }
 
         setIsSpeaking(false);
 
@@ -388,12 +486,30 @@ export default function StartInterview() {
         );
       };
 
+      // -----------------------------------------------------
+      // Play
+      // -----------------------------------------------------
+
       await audio.play();
+
+      console.log(
+        "▶️ TTS audio playing..."
+      );
 
     } catch (error) {
       console.error(
-        "Text To Speech Error:",
+        "❌ Text To Speech Error:",
         error
+      );
+
+      console.log(
+        "STATUS:",
+        error.response?.status
+      );
+
+      console.log(
+        "BACKEND RESPONSE:",
+        error.response?.data
       );
 
       setIsSpeaking(false);
@@ -412,13 +528,21 @@ export default function StartInterview() {
 
   const base64ToBlob = (
     base64,
-    mimeType
+    mimeType = "audio/wav"
   ) => {
-    /*
-      Agar backend:
-      data:audio/mpeg;base64,xxxx
-      return kare to prefix remove karenge.
-    */
+    if (!base64) {
+      throw new Error(
+        "Empty audio data received."
+      );
+    }
+
+    // Handles:
+    //
+    // data:audio/wav;base64,XXXX
+    //
+    // and:
+    //
+    // XXXX
 
     const cleanBase64 =
       base64.includes(",")
@@ -469,7 +593,7 @@ export default function StartInterview() {
   };
 
   // =========================================================
-  // 6. GET MICROPHONE STREAM
+  // 6. MICROPHONE STREAM
   // =========================================================
 
   const getMicrophoneStream =
@@ -516,15 +640,20 @@ export default function StartInterview() {
         const mimeType =
           getSupportedMimeType();
 
-        const recorder =
-          mimeType
-            ? new MediaRecorder(
-                stream,
-                { mimeType }
-              )
-            : new MediaRecorder(
-                stream
-              );
+        let recorder;
+
+        if (mimeType) {
+          recorder =
+            new MediaRecorder(
+              stream,
+              {
+                mimeType,
+              }
+            );
+        } else {
+          recorder =
+            new MediaRecorder(stream);
+        }
 
         mediaRecorderRef.current =
           recorder;
@@ -532,47 +661,48 @@ export default function StartInterview() {
         hasStartedRecordingRef.current =
           true;
 
-        recorder.ondataavailable = (
-          event
-        ) => {
-          if (
-            event.data &&
-            event.data.size > 0
-          ) {
-            audioChunksRef.current.push(
-              event.data
-            );
-          }
-        };
+        recorder.ondataavailable =
+          (event) => {
+            if (
+              event.data &&
+              event.data.size > 0
+            ) {
+              audioChunksRef.current.push(
+                event.data
+              );
+            }
+          };
 
         recorder.onstop = () => {
           handleRecordingStopped(
-            mimeType ||
-              "audio/webm"
+            mimeType || "audio/webm"
           );
         };
 
-        recorder.onerror = (
-          event
-        ) => {
-          console.error(
-            "MediaRecorder error:",
-            event
-          );
+        recorder.onerror =
+          (event) => {
+            console.error(
+              "❌ MediaRecorder error:",
+              event
+            );
 
-          hasStartedRecordingRef.current =
-            false;
+            hasStartedRecordingRef.current =
+              false;
 
-          setIsRecording(false);
+            setIsRecording(false);
 
-          setErrorMsg(
-            "Audio recording mein problem aayi."
-          );
-        };
+            setErrorMsg(
+              "Audio recording mein problem aayi."
+            );
+          };
 
         recorder.start();
 
         setIsRecording(true);
+
+        console.log(
+          "🎙️ Recording started."
+        );
 
         startSilenceDetection(
           stream
@@ -580,7 +710,7 @@ export default function StartInterview() {
 
       } catch (error) {
         console.error(
-          "Recording Start Error:",
+          "❌ Recording Start Error:",
           error
         );
 
@@ -593,7 +723,7 @@ export default function StartInterview() {
     };
 
   // =========================================================
-  // 8. MEDIARECORDER SUPPORTED MIME TYPE
+  // 8. MIME TYPE
   // =========================================================
 
   const getSupportedMimeType =
@@ -645,6 +775,7 @@ export default function StartInterview() {
         audioContext.createAnalyser();
 
       analyser.fftSize = 2048;
+
       analyser.smoothingTimeConstant =
         0.8;
 
@@ -694,19 +825,11 @@ export default function StartInterview() {
               normalized;
           }
 
-          const rms = Math.sqrt(
-            sum /
-              dataArray.length
-          );
-
-          /*
-            Threshold:
-            Lower = more sensitive
-            Higher = less sensitive
-          */
-
-          const SILENCE_THRESHOLD =
-            0.015;
+          const rms =
+            Math.sqrt(
+              sum /
+                dataArray.length
+            );
 
           const isSilent =
             rms <
@@ -729,13 +852,17 @@ export default function StartInterview() {
               silenceDuration >=
               SILENCE_DURATION
             ) {
+              console.log(
+                "🔇 8 seconds silence detected."
+              );
+
               stopRecording();
 
               return;
             }
+
           } else {
-            silenceStartedAt =
-              null;
+            silenceStartedAt = null;
           }
 
           animationFrameRef.current =
@@ -761,17 +888,6 @@ export default function StartInterview() {
         );
 
         animationFrameRef.current =
-          null;
-      }
-
-      if (
-        silenceTimerRef.current
-      ) {
-        clearTimeout(
-          silenceTimerRef.current
-        );
-
-        silenceTimerRef.current =
           null;
       }
 
@@ -811,6 +927,10 @@ export default function StartInterview() {
         setIsRecording(false);
 
         mediaRecorderRef.current.stop();
+
+        console.log(
+          "🛑 Recording stopped."
+        );
       }
     };
 
@@ -841,13 +961,17 @@ export default function StartInterview() {
         return;
       }
 
-      submitAnswer(
-        audioBlob
+      console.log(
+        "🎤 Recorded audio:",
+        audioBlob.size,
+        "bytes"
       );
+
+      submitAnswer(audioBlob);
     };
 
   // =========================================================
-  // 13. SUBMIT AUDIO ANSWER
+  // 13. SUBMIT ANSWER
   // =========================================================
 
   const submitAnswer =
@@ -862,6 +986,7 @@ export default function StartInterview() {
         true;
 
       setIsSubmitting(true);
+
       setErrorMsg(null);
 
       try {
@@ -883,7 +1008,20 @@ export default function StartInterview() {
         formData.append(
           "audio",
           audioBlob,
-          `answer-${currentQuestionIdx + 1}.webm`
+          `answer-${
+            currentQuestionIdx + 1
+          }.webm`
+        );
+
+        console.log(
+          "📤 Submitting answer:",
+          {
+            interviewId: interviewID,
+            questionIndex:
+              currentQuestionIdx,
+            audioSize:
+              audioBlob.size,
+          }
         );
 
         const response =
@@ -893,7 +1031,7 @@ export default function StartInterview() {
           );
 
         console.log(
-          "Answer submitted:",
+          "✅ Answer submitted:",
           response.data
         );
 
@@ -911,7 +1049,7 @@ export default function StartInterview() {
 
       } catch (error) {
         console.error(
-          "Submit Answer Error:",
+          "❌ Submit Answer Error:",
           error
         );
 
@@ -947,6 +1085,11 @@ export default function StartInterview() {
       try {
         setErrorMsg(null);
 
+        console.log(
+          "🏁 Ending interview:",
+          interviewID
+        );
+
         const response =
           await API.post(
             "/interview/endInterview",
@@ -957,7 +1100,7 @@ export default function StartInterview() {
           );
 
         console.log(
-          "Interview Evaluation:",
+          "📊 Interview Evaluation:",
           response.data
         );
 
@@ -965,15 +1108,14 @@ export default function StartInterview() {
           response?.data?.data;
 
         setEvaluation(
-          result?.evaluation ||
-            null
+          result?.evaluation || null
         );
 
         setIsComplete(true);
 
       } catch (error) {
         console.error(
-          "End Interview Error:",
+          "❌ End Interview Error:",
           error
         );
 
@@ -1028,6 +1170,17 @@ export default function StartInterview() {
         audioElementRef.current
       ) {
         audioElementRef.current.pause();
+
+        audioElementRef.current =
+          null;
+      }
+
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(
+          audioUrlRef.current
+        );
+
+        audioUrlRef.current = null;
       }
 
       if (
@@ -1035,11 +1188,16 @@ export default function StartInterview() {
       ) {
         mediaStreamRef.current
           .getTracks()
-          .forEach((track) =>
-            track.stop()
+          .forEach(
+            (track) =>
+              track.stop()
           );
+
+        mediaStreamRef.current =
+          null;
       }
     };
+
   }, []);
 
   // =========================================================
@@ -1063,7 +1221,7 @@ export default function StartInterview() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 text-[#eaecf0]">
 
-        <div className="w-full max-w-2xl rounded-3xl border border-[rgba(255,255,255,0.10)] bg-[#0d1538]/80 p-8 text-center shadow-2xl backdrop-blur-xl">
+        <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 text-center shadow-2xl backdrop-blur-xl">
 
           <h2 className="text-3xl font-bold text-white">
             Interview Complete!
@@ -1076,6 +1234,8 @@ export default function StartInterview() {
           {evaluation && (
             <div className="mt-8 text-left">
 
+              {/* SCORE */}
+
               <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
 
                 <p className="text-sm text-[#9aa1b4]">
@@ -1084,12 +1244,15 @@ export default function StartInterview() {
 
                 <p className="mt-2 text-5xl font-bold text-white">
                   {evaluation.overallScore}
+
                   <span className="text-2xl text-[#9aa1b4]">
                     /10
                   </span>
                 </p>
 
               </div>
+
+              {/* FEEDBACK */}
 
               {evaluation.feedbackSummary && (
                 <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -1099,19 +1262,20 @@ export default function StartInterview() {
                   </h3>
 
                   <p className="mt-2 text-sm leading-6 text-[#b8becd]">
-                    {
-                      evaluation.feedbackSummary
-                    }
+                    {evaluation.feedbackSummary}
                   </p>
 
                 </div>
               )}
+
+              {/* SKILLS */}
 
               {Array.isArray(
                 evaluation.skillsAssessment
               ) &&
                 evaluation.skillsAssessment
                   .length > 0 && (
+
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
 
                     <h3 className="font-semibold text-white">
@@ -1155,18 +1319,22 @@ export default function StartInterview() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] text-[#eaecf0]">
 
-      {/* TOP BAR */}
+      {/* =====================================================
+          TOP BAR
+      ===================================================== */}
 
       <InterviewTopBar
         jobTitle={
           jobTitle ||
-          (questionsSources ===
-          "topics"
-            ? "Topic Based Interview"
-            : questionsSources ===
-              "resume"
-            ? "Resume Based Interview"
-            : "AI Interview")
+          (
+            questionsSources ===
+            "topics"
+              ? "Topic Based Interview"
+              : questionsSources ===
+                "resume"
+              ? "Resume Based Interview"
+              : "AI Interview"
+          )
         }
         currentIndex={
           currentQuestionIdx
@@ -1176,7 +1344,9 @@ export default function StartInterview() {
         }
       />
 
-      {/* ERROR */}
+      {/* =====================================================
+          ERROR
+      ===================================================== */}
 
       {errorMsg && (
         <div className="mx-6 mt-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
@@ -1185,10 +1355,12 @@ export default function StartInterview() {
             {errorMsg}
           </span>
 
-          {!isRecording &&
+          {!isSpeaking &&
+            !isRecording &&
             !isSubmitting &&
             questions.length >
               0 && (
+
               <button
                 type="button"
                 onClick={() =>
@@ -1207,11 +1379,15 @@ export default function StartInterview() {
         </div>
       )}
 
-      {/* MAIN */}
+      {/* =====================================================
+          MAIN
+      ===================================================== */}
 
       <main className="flex flex-1 gap-6 overflow-hidden p-6">
 
-        {/* QUESTION */}
+        {/* ===================================================
+            QUESTION
+        =================================================== */}
 
         <div className="w-[55%]">
 
@@ -1234,7 +1410,9 @@ export default function StartInterview() {
 
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* ===================================================
+            RIGHT SIDE
+        =================================================== */}
 
         <div className="flex w-[45%] flex-col gap-6">
 
@@ -1263,7 +1441,9 @@ export default function StartInterview() {
 
       </main>
 
-      {/* CONTROLS */}
+      {/* =====================================================
+          CONTROLS
+      ===================================================== */}
 
       <InterviewControlBar
         onNext={

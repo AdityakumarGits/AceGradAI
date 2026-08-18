@@ -1,6 +1,6 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
-
+import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 import {
   generateInterviewQuestions,
   evaluateInterviewSession,
@@ -387,69 +387,181 @@ export const verifyInterviewOtp = async (
 // TEXT TO SPEECH
 // ==================================================
 
-export const textToSpeech = async (
-  req,
-  res,
-  next
-) => {
+// ==================================================
+// TEXT TO SPEECH - AZURE SPEECH
+// ==================================================
+
+export const textToSpeech = async (req, res, next) => {
+  let speechSynthesizer = null;
+
   try {
     const { text } = req.body;
 
-    if (!text) {
+    // ---------------------------------------------
+    // 1. Validate text
+    // ---------------------------------------------
+
+    if (!text?.trim()) {
+      return next(
+        new AppError("Text is required for speech generation", 400)
+      );
+    }
+
+    // ---------------------------------------------
+    // 2. Validate Azure configuration
+    // ---------------------------------------------
+
+    const speechKey = process.env.AZURE_SPEECH_KEY;
+    const speechRegion = process.env.AZURE_SPEECH_REGION;
+
+    if (!speechKey) {
+      console.error("❌ AZURE_SPEECH_KEY is missing");
+
       return next(
         new AppError(
-          "Text is required for speech generation",
-          400
+          "Azure Speech API key is not configured",
+          500
         )
       );
     }
 
-    const response = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${process.env.ELEVENLABS_VOICE_ID}`,
-      {
-        text,
-        model_id:
-          "eleven_monolingual_v1",
-      },
-      {
-        headers: {
-          "xi-api-key":
-            process.env.ELEVENLABS_API_KEY,
+    if (!speechRegion) {
+      console.error("❌ AZURE_SPEECH_REGION is missing");
 
-          "Content-Type":
-            "application/json",
-        },
+      return next(
+        new AppError(
+          "Azure Speech region is not configured",
+          500
+        )
+      );
+    }
 
-        responseType:
-          "arraybuffer",
-      }
+    // ---------------------------------------------
+    // 3. Create Azure Speech configuration
+    // ---------------------------------------------
+
+    const speechConfig = sdk.SpeechConfig.fromSubscription(
+      speechKey,
+      speechRegion
     );
 
-    const audioBase64 =
-      Buffer.from(
-        response.data
-      ).toString("base64");
+    // ---------------------------------------------
+    // 4. Configure Mira voice
+    // ---------------------------------------------
+
+    speechConfig.speechSynthesisLanguage = "en-US";
+
+    speechConfig.speechSynthesisVoiceName =
+      "en-US-AvaMultilingualNeural";
+
+    // ---------------------------------------------
+    // 5. Configure audio format
+    // ---------------------------------------------
+
+    speechConfig.speechSynthesisOutputFormat =
+      sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
+
+    // ---------------------------------------------
+    // 6. null audioConfig
+    //
+    // This tells Azure:
+    // "Don't play audio on backend machine.
+    // Give me the generated audio bytes."
+    // ---------------------------------------------
+
+    speechSynthesizer = new sdk.SpeechSynthesizer(
+      speechConfig,
+      null
+    );
+
+    // ---------------------------------------------
+    // 7. Generate speech
+    // ---------------------------------------------
+console.log("TTS RESPONSE:", {
+  audioContentExists: !!audioBase64,
+  audioLength: audioBase64?.length,
+  contentType: "audio/wav",
+});
+    const result = await new Promise((resolve, reject) => {
+      speechSynthesizer.speakTextAsync(
+        text.trim(),
+
+        (speechResult) => {
+          resolve(speechResult);
+        },
+
+        (error) => {
+          reject(error);
+        }
+      );
+    });
+
+    // ---------------------------------------------
+    // 8. Check Azure result
+    // ---------------------------------------------
+
+    if (
+      result.reason !==
+      sdk.ResultReason.SynthesizingAudioCompleted
+    ) {
+      console.error(
+        "❌ Azure Speech synthesis failed:",
+        result.errorDetails
+      );
+
+      return next(
+        new AppError(
+          result.errorDetails ||
+            "Azure Speech synthesis failed",
+          500
+        )
+      );
+    }
+
+    // ---------------------------------------------
+    // 9. Convert audio bytes → Base64
+    // ---------------------------------------------
+
+    const audioBase64 = Buffer.from(
+      result.audioData
+    ).toString("base64");
+
+    // ---------------------------------------------
+    // 10. Response
+    // ---------------------------------------------
 
     return res.status(200).json({
       status: "success",
 
       data: {
         audioContent: audioBase64,
+        contentType: "audio/wav",
       },
     });
+    console.log("AZURE TTS SUCCESS:", {
+  reason: result.reason,
+  audioLength: result.audioData?.length,
+});
 
   } catch (error) {
-    console.error(
-      "❌ ElevenLabs TTS Error:",
-      error.message
-    );
+    console.error("❌ Azure TTS Error:", error);
 
     return next(
       new AppError(
-        "Failed to generate speech",
+        error?.message ||
+          "Failed to generate speech using Azure Speech",
         500
       )
     );
+
+  } finally {
+    // ---------------------------------------------
+    // 11. Cleanup
+    // ---------------------------------------------
+
+    if (speechSynthesizer) {
+      speechSynthesizer.close();
+    }
   }
 };
 
