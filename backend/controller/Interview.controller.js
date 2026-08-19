@@ -692,37 +692,40 @@ export const submitAnswer = async (
   size: req.file.size,
   originalname: req.file.originalname,
 });
+console.log("🎤 Audio buffer size:", req.file.buffer.length);
+  console.log("🎤 MIME:", req.file.mimetype);
+console.log("🎤 FILE SIZE:", req.file.size);
+console.log(
+  "🎤 BUFFER HEADER:",
+  req.file.buffer.subarray(0, 20).toString("hex")
+);
 
-const {
-  result,
-  error: deepgramError,
-} =
+
+
+const response =
   await deepgram.listen.v1.media.transcribeFile(
     req.file.buffer,
     {
       model: "nova-3",
       smart_format: true,
-      mimetype: req.file.mimetype,
+      language: "en-US",
+      encoding: "opus",
+      container: "webm",
     }
   );
-    if (deepgramError) {
-      console.error(
-        "❌ Deepgram Error:",
-        deepgramError
-      );
 
-      return next(
-        new AppError(
-          "Failed to transcribe audio answer",
-          500
-        )
-      );
-    }
+console.log(
+  " Deepgram Full Response:",
+  response
+);
+   
 
-    const transcript =
-      result?.results?.channels?.[0]
-        ?.alternatives?.[0]
-        ?.transcript?.trim();
+   const transcript =
+  response?.results?.channels?.[0]
+    ?.alternatives?.[0]
+    ?.transcript?.trim();
+
+console.log("📝 Deepgram Transcript:", transcript);
 
     if (!transcript) {
       return next(

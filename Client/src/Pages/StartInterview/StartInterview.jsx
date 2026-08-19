@@ -460,7 +460,7 @@ export default function StartInterview() {
 
         startRecording();
       };
-
+     
       // -----------------------------------------------------
       // Audio error
       // -----------------------------------------------------
@@ -678,8 +678,7 @@ export default function StartInterview() {
             mimeType || "audio/webm"
           );
         };
-console.log("🎤 Audio MIME Type:", audioBlob.type);
-console.log("🎤 Audio Size:", audioBlob.size);
+
         recorder.onerror =
           (event) => {
             console.error(
@@ -793,8 +792,8 @@ console.log("🎤 Audio Size:", audioBlob.size);
           analyser.fftSize
         );
 
-      let silenceStartedAt =
-        null;
+    let silenceStartedAt = null;
+let hasDetectedSpeech = false;
 
       const detectSilence =
         () => {
@@ -812,18 +811,9 @@ console.log("🎤 Audio Size:", audioBlob.size);
 
           let sum = 0;
 
-          for (
-            let i = 0;
-            i < dataArray.length;
-            i++
-          ) {
-            const normalized =
-              (dataArray[i] - 128) /
-              128;
-
-            sum +=
-              normalized *
-              normalized;
+          for ( let i = 0; i < dataArray.length;i++) {
+            const normalized = (dataArray[i] - 128) / 128;
+            sum +=normalized* normalized;
           }
 
           const rms =
@@ -831,40 +821,36 @@ console.log("🎤 Audio Size:", audioBlob.size);
               sum /
                 dataArray.length
             );
+  const isSilent = rms < SILENCE_THRESHOLD;
+     if (!isSilent) {
+  // Candidate ne actual speech start ki
+  hasDetectedSpeech = true;
 
-          const isSilent =
-            rms <
-            SILENCE_THRESHOLD;
+  // Speech aa rahi hai, silence timer reset
+  silenceStartedAt = null;
 
-          if (isSilent) {
-            if (
-              silenceStartedAt ===
-              null
-            ) {
-              silenceStartedAt =
-                Date.now();
-            }
+} else if (hasDetectedSpeech) {
+  // Speech pehle aa chuki hai,
+  // ab silence count karo
 
-            const silenceDuration =
-              Date.now() -
-              silenceStartedAt;
+  if (silenceStartedAt === null) {
+    silenceStartedAt = Date.now();
+  }
 
-            if (
-              silenceDuration >=
-              SILENCE_DURATION
-            ) {
-              console.log(
-                "🔇 8 seconds silence detected."
-              );
+  const silenceDuration =
+    Date.now() - silenceStartedAt;
 
-              stopRecording();
+  if (silenceDuration >= SILENCE_DURATION) {
+    console.log(
+      "🔇 8 seconds silence detected after speech."
+    );
 
-              return;
-            }
-
-          } else {
-            silenceStartedAt = null;
-          }
+    stopRecording();
+    return;
+  }
+          }// else {
+          //   silenceStartedAt = null;
+          // }
 
           animationFrameRef.current =
             requestAnimationFrame(
@@ -953,7 +939,11 @@ console.log("🎤 Audio Size:", audioBlob.size);
         );
 
       audioChunksRef.current = [];
-
+     console.log("🎤 FINAL AUDIO:", {
+    blobSize: audioBlob.size,
+    blobType: audioBlob.type,
+    recorderMimeType: mimeType,
+     });
       if (audioBlob.size === 0) {
         setErrorMsg(
           "Koi audio record nahi hua. Please retry."
