@@ -678,7 +678,8 @@ export default function StartInterview() {
             mimeType || "audio/webm"
           );
         };
-
+console.log("🎤 Audio MIME Type:", audioBlob.type);
+console.log("🎤 Audio Size:", audioBlob.size);
         recorder.onerror =
           (event) => {
             console.error(
@@ -1005,14 +1006,17 @@ export default function StartInterview() {
           )
         );
 
-        formData.append(
-          "audio",
-          audioBlob,
-          `answer-${
-            currentQuestionIdx + 1
-          }.webm`
-        );
+        const extension = audioBlob.type.includes("mp4")
+  ? "mp4"
+  : audioBlob.type.includes("webm")
+    ? "webm"
+    : "wav";
 
+formData.append(
+  "audio",
+  audioBlob,
+  `answer-${currentQuestionIdx + 1}.${extension}`
+);
         console.log(
           "📤 Submitting answer:",
           {
