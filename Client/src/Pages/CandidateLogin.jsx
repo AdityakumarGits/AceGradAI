@@ -132,7 +132,7 @@ const CandidateLogin = () => {
           <div className="flex justify-end">
             <button onClick={handleForgotPassword}
               type="submit"
-              onClick={()=>{navigate("/forget-password")}}
+            //  onClick={()=>{navigate("/forget-password")}}
               className="text-sm text-indigo-400 hover:text-red-500 transition"
             >
               Forgot Password?

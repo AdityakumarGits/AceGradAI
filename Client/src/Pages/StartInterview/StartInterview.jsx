@@ -910,11 +910,8 @@ let hasDetectedSpeech = false;
           .state === "recording"
       ) {
         stopSilenceDetection();
-
         setIsRecording(false);
-
         mediaRecorderRef.current.stop();
-
         console.log(
           "🛑 Recording stopped."
         );
