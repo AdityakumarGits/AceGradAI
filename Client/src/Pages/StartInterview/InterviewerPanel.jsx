@@ -1,4 +1,4 @@
-import { Bot, Radio } from "lucide-react";
+import { Radio } from "lucide-react";
 import InterviewerImage from "../../assets/InterviewerImage.png"
 export default function InterviewerPanel({
   isSpeaking,
@@ -31,13 +31,18 @@ export default function InterviewerPanel({
 
       {/* Avatar */}
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-xl bg-white/5">
-        <div
-          className={`flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#d90000]/20 to-indigo-600/20 ring-2 transition-all duration-300 ${
-            isSpeaking ? "ring-indigo-500" : "ring-white/10"
-          }`}
-        >
-          <img  src={InterviewerImage} alt="Interviewer Image"
-          className="rounded-full object-cover"
+       <div
+  className={`flex h-28 w-28 items-center justify-center rounded-full
+    bg-gradient-to-br from-[#d90000]/20 to-indigo-600/20
+    ring-2 transition-all duration-300
+    ${
+      isSpeaking
+        ? "ring-indigo-500 shadow-[0_0_25px_rgba(99,102,241,0.45)]"
+        : "ring-white/10"
+    }`}
+>
+          <img  src={InterviewerImage} alt=" AI Interviewer Mira"
+          className="h-full w-full rounded-full object-cover"
           />
           
         </div>
