@@ -1,8 +1,8 @@
 import { Bot, Radio } from "lucide-react";
-
+import InterviewerImage from "../../assets/InterviewerImage.png"
 export default function InterviewerPanel({
   isSpeaking,
-  interviewerName = "IRA",
+  interviewerName = "MIRA",
 }) {
   return (
     <div
@@ -36,7 +36,10 @@ export default function InterviewerPanel({
             isSpeaking ? "ring-indigo-500" : "ring-white/10"
           }`}
         >
-          <Bot size={48} className="text-white/70" />
+          <img  src={InterviewerImage} alt="Interviewer Image"
+          className="rounded-full object-cover"
+          />
+          
         </div>
       </div>
 
