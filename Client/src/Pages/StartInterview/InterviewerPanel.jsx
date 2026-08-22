@@ -6,18 +6,18 @@ export default function InterviewerPanel({
 }) {
   return (
     <div
-      className={`relative flex h-full flex-col overflow-hidden rounded-2xl border bg-[#0d1538]/80 p-5 backdrop-blur-xl transition-colors duration-300 ${
+      className={`relative flex h-full flex-col overflow-hidden rounded-xl border bg-[#0d1538]/80 p-5 backdrop-blur-xl transition-colors duration-300 ${
         isSpeaking ? "border-indigo-500" : "border-white/10"
       }`}
     >
       {/* Header — matches CameraSection's header pattern */}
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Bot size={16} className="text-[#d90000]" />
           <span className="text-sm font-semibold text-white">
             Interviewer
           </span>
-        </div>
+        </div> */}
 
         {isSpeaking && (
           <div className="flex items-center gap-1.5 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1">

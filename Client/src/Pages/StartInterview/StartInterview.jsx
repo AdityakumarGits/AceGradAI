@@ -74,7 +74,7 @@ export default function StartInterview() {
   // CONSTANTS
   // =========================================================
 
-  const SILENCE_DURATION = 4000;
+  const SILENCE_DURATION = 8000;
   const SILENCE_THRESHOLD = 0.015;
 
   // =========================================================
@@ -809,23 +809,35 @@ export default function StartInterview() {
           )}
         </div>
       )}
+<main className="flex min-h-0 flex-1 flex-col overflow-hidden px-6 py-8">
 
-      <main className="flex flex-1 flex-col gap-6 overflow-hidden p-6">
-        {/* Interviewer + Candidate side-by-side */}
-        <div className="grid flex-1 grid-cols-2 gap-6">
-          <InterviewerPanel isSpeaking={isSpeaking} interviewerName="Mira" />
-          <CameraSection isRecording={isRecording} />
-        </div>
+  {/* Interviewer + Camera */}
+  <div className="mx-auto grid w-[900px] max-w-[1100px] grid-cols-2 gap-8">
 
-        {/* Transcription — poori-width, neeche */}
-        <EvaluationPanel status={evaluationStatus} feedbackItems={transcriptionItems} />
-      </main>
-
-      <InterviewControlBar
-        onNext={stopListeningManually}
-        isLastQuestion={currentQuestionIdx === questions.length - 1}
-        canProceed={isRecording && !isSubmitting}
+    <div className="h-[320px]">
+      <InterviewerPanel
+        isSpeaking={isSpeaking}
+        interviewerName="Mira"
       />
+    </div>
+
+    <div className="h-[320px]">
+      <CameraSection
+        isRecording={isRecording}
+      />
+    </div>
+
+  </div>
+
+  {/* Transcription */}
+  <div className="mx-auto mt-4 w-full max-w-[1400px] min-h-0 flex-1">
+    <EvaluationPanel
+      status={evaluationStatus}
+      feedbackItems={transcriptionItems}
+    />
+  </div>
+
+</main>
     </div>
   );
 }

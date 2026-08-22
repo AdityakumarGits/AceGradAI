@@ -12,12 +12,12 @@ export default function CameraSection({
   } = useCameraStream();
 
   return (
-    <div className="relative flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0d1538]/80 p-5 backdrop-blur-xl">
+    <div className="relative flex h-full flex-col overflow-hidden rounded-xl border border-white/10 bg-[#0d1538]/80 p-5 backdrop-blur-xl">
 
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
 
-        <div className="flex items-center gap-2">
+        {/* <div className="flex items-center gap-2">
           <Video
             size={16}
             className="text-[#d90000]"
@@ -26,7 +26,7 @@ export default function CameraSection({
           <span className="text-sm font-semibold text-white">
             Camera
           </span>
-        </div>
+        </div> */}
 
         {isRecording && (
           <div className="flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1">
@@ -36,7 +36,7 @@ export default function CameraSection({
               className="animate-pulse text-red-400"
             />
 
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-red-400">
+            <span className="text-[8px] font-semibold uppercase tracking-wider text-red-400">
               REC
             </span>
 
@@ -46,7 +46,7 @@ export default function CameraSection({
       </div>
 
       {/* Video */}
-      <div className="min-h-0 flex-1 overflow-hidden rounded-xl">
+      <div className="min-h-0 flex-1 overflow-hidden ">
 
         <CameraPreview
           videoRef={videoRef}
