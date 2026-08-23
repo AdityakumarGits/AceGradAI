@@ -962,3 +962,53 @@ export const getInterviewDetails = async (
     return next(error);
   }
 };
+
+export const getInterviewReport = async (req, res, next) => {
+    try {
+        const { interviewId } = req.params;
+
+        if (!interviewId) {
+            return next(
+                new AppError("Interview ID is required", 400)
+            );
+        }
+
+        const interview = await Interview.findOne({
+            _id: interviewId,
+            userId: req.user.id,
+        }).select(
+            "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt"
+        );
+
+        if (!interview) {
+            return next(
+                new AppError("Interview report not found", 404)
+            );
+        }
+
+        if (interview.status !== "completed") {
+            return next(
+                new AppError(
+                    "Interview has not been evaluated yet",
+                    400
+                )
+            );
+        }
+
+        return res.status(200).json({
+            status: "success",
+            message: "Interview report fetched successfully",
+            data: {
+                interview,
+            },
+        });
+
+    } catch (error) {
+        console.error(
+            "❌ Get Interview Report Error:",
+            error
+        );
+
+        return next(error);
+    }
+};

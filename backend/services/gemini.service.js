@@ -198,41 +198,107 @@ export const generateResumeInterviewQuestions = async (
 /**
  * Candidate ke questions aur answers ko evaluate karta hai.
  */
+/**
+ * Candidate ke questions aur answers ko evaluate karta hai.
+ * Returns complete evaluation compatible with Interview.evaluation schema.
+ */
 export const evaluateInterviewSession = async (qaData) => {
     try {
         const systemInstruction = `
-            You are a Principal Technical Recruiter and Engineering Manager.
+            You are a Principal Technical Recruiter and Senior Engineering Manager
+            conducting a professional technical interview evaluation.
 
-            Evaluate the candidate's interview responses based on:
-            - Technical correctness
-            - Depth of knowledge
-            - Problem-solving ability
-            - Clarity of explanation
+            Evaluate the candidate's answers carefully based ONLY on the
+            questions and answers provided.
 
-            Return ONLY a JSON object with exactly these keys:
+            Evaluate the candidate on these dimensions:
+
+            1. Technical Accuracy
+            2. Communication Quality
+            3. Problem-Solving Ability
+            4. Depth of Understanding
+            5. Practical Understanding
+
+            IMPORTANT RULES:
+
+            - Do NOT assume knowledge that the candidate did not demonstrate.
+            - Do NOT invent technologies, experience, or achievements.
+            - Evaluate every question individually.
+            - Scores must be between 0 and 10.
+            - overallScore must represent the candidate's overall performance.
+            - technicalScore must represent technical correctness and depth.
+            - communicationScore must represent clarity, structure, and explanation.
+            - problemSolvingScore must represent reasoning and approach.
+            - Keep feedback specific to the candidate's actual answers.
+            - Do not give generic praise.
+            - Identify concrete strengths and weaknesses.
+            - Recommended topics should be based on actual weaknesses.
+            - questionWiseEvaluation must contain an evaluation for EVERY question.
+
+            SCORING GUIDELINE:
+
+            0-2 = Very poor / incorrect
+            3-4 = Weak understanding
+            5-6 = Average / partially correct
+            7-8 = Good understanding
+            9 = Excellent
+            10 = Exceptional
+
+            Return ONLY valid JSON.
+
+            Return exactly this structure:
 
             {
-                "overallScore": <Number between 0 and 10>,
-                "feedbackSummary": "<Detailed feedback>",
-                "skillsAssessment": [
-                    "Strong: Example skill",
-                    "Weak: Example skill"
+                "overallScore": 0,
+                "technicalScore": 0,
+                "communicationScore": 0,
+                "problemSolvingScore": 0,
+
+                "strengths": [
+                    "specific strength"
+                ],
+
+                "weaknesses": [
+                    "specific weakness"
+                ],
+
+                "feedbackSummary": "Detailed overall feedback about the candidate's performance.",
+
+                "recommendedTopics": [
+                    "topic that candidate should improve"
+                ],
+
+                "questionWiseEvaluation": [
+                    {
+                        "questionIndex": 0,
+                        "questionText": "Original question",
+                        "score": 0,
+                        "whatWasGood": "What the candidate did well.",
+                        "whatCouldImprove": "What could be improved.",
+                        "feedback": "Specific evaluation of this answer."
+                    }
                 ]
             }
 
-            Do not include markdown, explanation, or any wrapper text.
-        `;
+            Additional requirements:
 
-        console.log("🧠 Starting AI evaluation...");
-        console.log("📦 QA Data:", JSON.stringify(qaData, null, 2));
+            - Preserve the original questionText exactly.
+            - Preserve the questionIndex exactly.
+            - Do not skip any question.
+            - Do not add extra JSON fields.
+            - Do not wrap the JSON in markdown.
+            - Do not include explanation outside JSON.
+        `;
 
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
 
             contents: `
-                Evaluate the following interview questions and candidate answers:
+                Evaluate the following technical interview.
 
-                ${JSON.stringify(qaData)}
+                Candidate Questions and Answers:
+
+                ${JSON.stringify(qaData, null, 2)}
             `,
 
             config: {
@@ -241,27 +307,19 @@ export const evaluateInterviewSession = async (qaData) => {
             },
         });
 
-        console.log("🧠 Gemini Evaluation Response:");
-        console.log(response);
-
         const evaluationResult = JSON.parse(response.text);
-
-        console.log("✅ Parsed Evaluation:", evaluationResult);
 
         return evaluationResult;
 
     } catch (error) {
+        console.error("❌ Gemini Evaluation Error:", error);
 
-        console.error("❌ Gemini Evaluation Error");
-        console.error("Status:", error?.status);
-        console.error("Message:", error?.message);
-        console.error("Full Error:", error);
-
-        // TEMPORARY: actual error frontend/backend tak visible rahe
-        throw error;
+        throw new Error(
+            "AI evaluation routine failed on the engine level"
+        );
     }
 };
-// // export const evaluateInterviewSession = async (qaData) => {
+
 //     try {
 //         const systemInstruction = `
 //             You are a Principal Technical Recruiter and Engineering Manager.

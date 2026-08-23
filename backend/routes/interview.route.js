@@ -1,6 +1,6 @@
 import express from "express";
 import {protect} from "../middlewares/protectedMiddleware.js";
-import { startInterview,textToSpeech,submitAnswer,endInterview,getAllInterviews,getInterviewDetails} from "../controller/interview.controller.js";
+import { startInterview,textToSpeech,submitAnswer,endInterview,getAllInterviews,getInterviewDetails,getInterviewReport,} from "../controller/interview.controller.js";
 import { verifyInterviewOtp, submitGuestAnswer } from "../controller/interview.controller.js"; // Import new helpers
 import multer from "multer";
 
@@ -23,5 +23,6 @@ router.post("/submitGuestAnswer", submitGuestAnswer);
 router.post("/endInterview", protect, endInterview);
 router.get("/getAllInterviews", protect, getAllInterviews);
 router.get("/getInterviewDetails/:interviewId", protect, getInterviewDetails);
+router.get("/:interviewId/report",protect,getInterviewReport);
 
 export default router;
