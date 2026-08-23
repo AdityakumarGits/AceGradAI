@@ -141,23 +141,86 @@ const interviewSchema = new mongoose.Schema(
     ],
 
     // --------------------------------------------------
-    // 10. AI Evaluation
-    // --------------------------------------------------
-    evaluation: {
-      overallScore: {
+// 10. AI Evaluation
+// --------------------------------------------------
+
+evaluation: {
+  overallScore: {
+    type: Number,
+    min: 0,
+    max: 10,
+  },
+
+  technicalScore: {
+    type: Number,
+    min: 0,
+    max: 10,
+  },
+
+  communicationScore: {
+    type: Number,
+    min: 0,
+    max: 10,
+  },
+
+  problemSolvingScore: {
+    type: Number,
+    min: 0,
+    max: 10,
+  },
+
+  strengths: {
+    type: [String],
+    default: [],
+  },
+
+  weaknesses: {
+    type: [String],
+    default: [],
+  },
+
+  feedbackSummary: {
+    type: String,
+  },
+
+  recommendedTopics: {
+    type: [String],
+    default: [],
+  },
+
+  questionWiseEvaluation: [
+    {
+      questionIndex: {
+        type: Number,
+        required: true,
+      },
+
+      questionText: {
+        type: String,
+        required: true,
+      },
+
+      score: {
         type: Number,
         min: 0,
         max: 10,
+        required: true,
       },
 
-      feedbackSummary: {
+      whatWasGood: {
         type: String,
       },
 
-      skillsAssessment: {
-        type: [String],
+      whatCouldImprove: {
+        type: String,
+      },
+
+      feedback: {
+        type: String,
       },
     },
+  ],
+},
 
     // --------------------------------------------------
     // 11. Interview Status

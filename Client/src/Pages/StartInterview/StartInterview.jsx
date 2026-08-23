@@ -224,16 +224,26 @@ export default function StartInterview() {
     try {
       setErrorMsg(null);
 
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
-        audioElementRef.current.currentTime = 0;
-        audioElementRef.current = null;
-      }
+     if (audioElementRef.current) {
+  const oldAudio = audioElementRef.current;
 
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
+  // Important:
+  // Old audio ke events ko pehle remove karo
+  oldAudio.onended = null;
+  oldAudio.onerror = null;
+  oldAudio.onabort = null;
+
+  oldAudio.pause();
+  oldAudio.removeAttribute("src");
+  oldAudio.load();
+
+  audioElementRef.current = null;
+}
+
+if (audioUrlRef.current) {
+  URL.revokeObjectURL(audioUrlRef.current);
+  audioUrlRef.current = null;
+}
 
       console.log("🔊 TTS Request:", text);
 
@@ -267,34 +277,48 @@ export default function StartInterview() {
       console.log("✅ Audio Blob:", audioBlob.size, "bytes");
 
       const audioUrl = URL.createObjectURL(audioBlob);
-      audioUrlRef.current = audioUrl;
 
-      const audio = new Audio(audioUrl);
-      audioElementRef.current = audio;
+const audio = new Audio();
+audio.src = audioUrl;
+audio.preload = "auto";
 
-      audio.onended = () => {
-        console.log("🔊 Audio finished.");
+audioUrlRef.current = audioUrl;
+audioElementRef.current = audio;
 
-        if (audioUrlRef.current) {
-          URL.revokeObjectURL(audioUrlRef.current);
-          audioUrlRef.current = null;
-        }
+     audio.onended = () => {
+  console.log("🔊 Audio finished.");
 
-        setIsSpeaking(false);
-        onFinished?.();
-      };
+  // Sirf isi audio ka URL revoke karo
+  URL.revokeObjectURL(audioUrl);
 
-      audio.onerror = (event) => {
-        console.error("❌ Audio playback error:", event);
+  if (audioElementRef.current === audio) {
+    audioElementRef.current = null;
+  }
 
-        if (audioUrlRef.current) {
-          URL.revokeObjectURL(audioUrlRef.current);
-          audioUrlRef.current = null;
-        }
+  if (audioUrlRef.current === audioUrl) {
+    audioUrlRef.current = null;
+  }
 
-        setIsSpeaking(false);
-        setErrorMsg("Audio play nahi ho paya.");
-      };
+  setIsSpeaking(false);
+
+  onFinished?.();
+};
+audio.onerror = (event) => {
+  console.error("❌ Audio playback error:", event);
+
+  URL.revokeObjectURL(audioUrl);
+
+  if (audioElementRef.current === audio) {
+    audioElementRef.current = null;
+  }
+
+  if (audioUrlRef.current === audioUrl) {
+    audioUrlRef.current = null;
+  }
+
+  setIsSpeaking(false);
+  setErrorMsg("Audio playback error.");
+};
 
       setIsSpeaking(true);
       setIsRecording(false);
@@ -302,7 +326,7 @@ export default function StartInterview() {
       await audio.play();
       console.log("▶️ Audio playing...");
     } catch (error) {
-      console.error("❌ Text To Speech Error:", error);
+      console.error(" Text To Speech Error:", error);
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
 

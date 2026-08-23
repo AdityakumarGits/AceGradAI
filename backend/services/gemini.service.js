@@ -223,6 +223,9 @@ export const evaluateInterviewSession = async (qaData) => {
             Do not include markdown, explanation, or any wrapper text.
         `;
 
+        console.log("🧠 Starting AI evaluation...");
+        console.log("📦 QA Data:", JSON.stringify(qaData, null, 2));
+
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
 
@@ -238,15 +241,75 @@ export const evaluateInterviewSession = async (qaData) => {
             },
         });
 
+        console.log("🧠 Gemini Evaluation Response:");
+        console.log(response);
+
         const evaluationResult = JSON.parse(response.text);
+
+        console.log("✅ Parsed Evaluation:", evaluationResult);
 
         return evaluationResult;
 
     } catch (error) {
-        console.error("❌ Gemini Evaluation Error:", error);
 
-        throw new Error(
-            "AI evaluation routine failed on the engine level"
-        );
+        console.error("❌ Gemini Evaluation Error");
+        console.error("Status:", error?.status);
+        console.error("Message:", error?.message);
+        console.error("Full Error:", error);
+
+        // TEMPORARY: actual error frontend/backend tak visible rahe
+        throw error;
     }
 };
+// // export const evaluateInterviewSession = async (qaData) => {
+//     try {
+//         const systemInstruction = `
+//             You are a Principal Technical Recruiter and Engineering Manager.
+
+//             Evaluate the candidate's interview responses based on:
+//             - Technical correctness
+//             - Depth of knowledge
+//             - Problem-solving ability
+//             - Clarity of explanation
+
+//             Return ONLY a JSON object with exactly these keys:
+
+//             {
+//                 "overallScore": <Number between 0 and 10>,
+//                 "feedbackSummary": "<Detailed feedback>",
+//                 "skillsAssessment": [
+//                     "Strong: Example skill",
+//                     "Weak: Example skill"
+//                 ]
+//             }
+
+//             Do not include markdown, explanation, or any wrapper text.
+//         `;
+
+//         const response = await ai.models.generateContent({
+//             model: "gemini-2.5-flash",
+
+//             contents: `
+//                 Evaluate the following interview questions and candidate answers:
+
+//                 ${JSON.stringify(qaData)}
+//             `,
+
+//             config: {
+//                 systemInstruction,
+//                 responseMimeType: "application/json",
+//             },
+//         });
+
+//         const evaluationResult = JSON.parse(response.text);
+
+//         return evaluationResult;
+
+//     } catch (error) {
+//         console.error("❌ Gemini Evaluation Error:", error);
+
+//         throw new Error(
+//             "AI evaluation routine failed on the engine level"
+//         );
+//     }
+// };
