@@ -1,6 +1,8 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
+
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
+
 import {
   generateInterviewQuestions,
   evaluateInterviewSession,
@@ -27,11 +29,6 @@ const deepgram = new DeepgramClient({
 /**
  * @route   POST /api/v1/interview/startInterview
  * @desc    Creates a new interview session.
- *          Questions are generated based on:
- *          1. JD
- *          2. Topics
- *          3. Resume
- *
  * @access  Protected
  */
 export const startInterview = async (req, res, next) => {
@@ -86,7 +83,44 @@ export const startInterview = async (req, res, next) => {
     }
 
     // --------------------------------------------------
-    // 2. Source Specific Validation
+    // 2. Interview Type Validation
+    // --------------------------------------------------
+
+    const finalInterviewType =
+      interviewType || "practice";
+
+    if (!["practice", "campaign"].includes(finalInterviewType)) {
+      return next(
+        new AppError(
+          "Invalid interview type. Use practice or campaign",
+          400
+        )
+      );
+    }
+
+    // Campaign-specific validation
+    if (finalInterviewType === "campaign") {
+      if (!candidateName?.trim()) {
+        return next(
+          new AppError(
+            "Candidate name is required for campaign interview",
+            400
+          )
+        );
+      }
+
+      if (!candidateEmail?.trim()) {
+        return next(
+          new AppError(
+            "Candidate email is required for campaign interview",
+            400
+          )
+        );
+      }
+    }
+
+    // --------------------------------------------------
+    // 3. Source Specific Validation
     // --------------------------------------------------
 
     // JD
@@ -138,21 +172,18 @@ export const startInterview = async (req, res, next) => {
     }
 
     // --------------------------------------------------
-    // 3. Logged-in User
+    // 4. Logged-in User
     // --------------------------------------------------
 
     const userId = req.user.id;
 
     // --------------------------------------------------
-    // 4. Generate AI Questions
+    // 5. Generate AI Questions
     // --------------------------------------------------
 
     let aiQuestions;
 
-    // ---------------------------------------------
     // JD
-    // ---------------------------------------------
-
     if (questionsSources === "jd") {
       aiQuestions = await generateInterviewQuestions(
         jobTitle.trim(),
@@ -161,10 +192,7 @@ export const startInterview = async (req, res, next) => {
       );
     }
 
-    // ---------------------------------------------
     // Topics
-    // ---------------------------------------------
-
     else if (questionsSources === "topics") {
       aiQuestions =
         await generateTopicInterviewQuestions(
@@ -173,10 +201,7 @@ export const startInterview = async (req, res, next) => {
         );
     }
 
-    // ---------------------------------------------
     // Resume
-    // ---------------------------------------------
-
     else if (questionsSources === "resume") {
       let parser;
 
@@ -204,7 +229,6 @@ export const startInterview = async (req, res, next) => {
             resumeText,
             experienceLevel
           );
-
       } finally {
         if (parser) {
           await parser.destroy();
@@ -213,7 +237,7 @@ export const startInterview = async (req, res, next) => {
     }
 
     // --------------------------------------------------
-    // 5. Validate Gemini Response
+    // 6. Validate Gemini Questions
     // --------------------------------------------------
 
     if (
@@ -229,19 +253,19 @@ export const startInterview = async (req, res, next) => {
     }
 
     // --------------------------------------------------
-    // 6. Campaign OTP
+    // 7. Campaign OTP
     // --------------------------------------------------
 
     let generatedOtp = null;
 
-    if (interviewType === "campaign") {
+    if (finalInterviewType === "campaign") {
       generatedOtp = Math.floor(
         100000 + Math.random() * 900000
       ).toString();
     }
 
     // --------------------------------------------------
-    // 7. Create Interview
+    // 8. Create Interview
     // --------------------------------------------------
 
     const newInterview =
@@ -269,17 +293,16 @@ export const startInterview = async (req, res, next) => {
 
         questions: aiQuestions,
 
-        interviewType:
-          interviewType || "practice",
+        interviewType: finalInterviewType,
 
         candidateName:
-          interviewType === "campaign"
-            ? candidateName
+          finalInterviewType === "campaign"
+            ? candidateName.trim()
             : undefined,
 
         candidateEmail:
-          interviewType === "campaign"
-            ? candidateEmail
+          finalInterviewType === "campaign"
+            ? candidateEmail.trim().toLowerCase()
             : undefined,
 
         accessOtp: generatedOtp,
@@ -288,7 +311,7 @@ export const startInterview = async (req, res, next) => {
       });
 
     // --------------------------------------------------
-    // 8. Response
+    // 9. Response
     // --------------------------------------------------
 
     return res.status(201).json({
@@ -359,6 +382,14 @@ export const verifyInterviewOtp = async (
       });
     }
 
+    if (interview.status === "completed") {
+      return res.status(400).json({
+        status: "fail",
+        message:
+          "This interview has already been completed",
+      });
+    }
+
     if (interview.status === "pending") {
       interview.status = "active";
       await interview.save();
@@ -384,87 +415,121 @@ export const verifyInterviewOtp = async (
 };
 
 // ==================================================
-// TEXT TO SPEECH
-// ==================================================
-
-// ==================================================
 // TEXT TO SPEECH - AZURE SPEECH
 // ==================================================
 
-
-  export const textToSpeech = async (req, res, next) => {
+export const textToSpeech = async (
+  req,
+  res,
+  next
+) => {
   let speechSynthesizer = null;
- 
+
   try {
     const { text } = req.body;
- 
-    // 1. Validate text
+
+    // Validate text
     if (!text?.trim()) {
       return next(
-        new AppError("Text is required for speech generation", 400),
+        new AppError(
+          "Text is required for speech generation",
+          400
+        )
       );
     }
- 
-    // 2. Validate Azure configuration
-    const speechKey = process.env.AZURE_SPEECH_KEY;
-    const speechRegion = process.env.AZURE_SPEECH_REGION;
- 
+
+    // Validate Azure configuration
+    const speechKey =
+      process.env.AZURE_SPEECH_KEY;
+
+    const speechRegion =
+      process.env.AZURE_SPEECH_REGION;
+
     if (!speechKey) {
-      console.error("❌ AZURE_SPEECH_KEY is missing");
-      return next(new AppError("Azure Speech API key is not configured", 500));
-    }
- 
-    if (!speechRegion) {
-      console.error("❌ AZURE_SPEECH_REGION is missing");
-      return next(new AppError("Azure Speech region is not configured", 500));
-    }
- 
-    // 3. Create Azure Speech configuration
-    const speechConfig = sdk.SpeechConfig.fromSubscription(
-      speechKey,
-      speechRegion,
-    );
- 
-    // 4. Configure voice
-    speechConfig.speechSynthesisLanguage = "en-US";
-    speechConfig.speechSynthesisVoiceName = "en-US-AvaMultilingualNeural";
- 
-    // 5. Configure audio format
-    speechConfig.speechSynthesisOutputFormat =
-      sdk.SpeechSynthesisOutputFormat.Riff24Khz16BitMonoPcm;
- 
-    // 6. null audioConfig — "don't play on backend, give me the raw bytes"
-    speechSynthesizer = new sdk.SpeechSynthesizer(speechConfig, null);
- 
-    // 7. Generate speech
-    const result = await new Promise((resolve, reject) => {
-      speechSynthesizer.speakTextAsync(
-        text.trim(),
-        (speechResult) => resolve(speechResult),
-        (error) => reject(error),
+      console.error(
+        "❌ AZURE_SPEECH_KEY is missing"
       );
-    });
- 
-    // 8. Check Azure result
-    if (result.reason !== sdk.ResultReason.SynthesizingAudioCompleted) {
-      console.error("❌ Azure Speech synthesis failed:", result.errorDetails);
+
       return next(
         new AppError(
-          result.errorDetails || "Azure Speech synthesis failed",
-          500,
-        ),
+          "Azure Speech API key is not configured",
+          500
+        )
       );
     }
- 
-    // 9. Convert audio bytes → Base64 (declared BEFORE it's used anywhere)
-    const audioBase64 = Buffer.from(result.audioData).toString("base64");
- 
-    console.log("TTS RESPONSE:", {
-      audioContentExists: !!audioBase64,
-      audioLength: audioBase64?.length,
-    });
- 
-    // 10. Response
+
+    if (!speechRegion) {
+      console.error(
+        "❌ AZURE_SPEECH_REGION is missing"
+      );
+
+      return next(
+        new AppError(
+          "Azure Speech region is not configured",
+          500
+        )
+      );
+    }
+
+    // Azure configuration
+    const speechConfig =
+      sdk.SpeechConfig.fromSubscription(
+        speechKey,
+        speechRegion
+      );
+
+    speechConfig.speechSynthesisLanguage =
+      "en-US";
+
+    speechConfig.speechSynthesisVoiceName =
+      "en-US-AvaMultilingualNeural";
+
+    speechConfig.speechSynthesisOutputFormat =
+      sdk.SpeechSynthesisOutputFormat
+        .Riff24Khz16BitMonoPcm;
+
+    speechSynthesizer =
+      new sdk.SpeechSynthesizer(
+        speechConfig,
+        null
+      );
+
+    // Generate speech
+    const result = await new Promise(
+      (resolve, reject) => {
+        speechSynthesizer.speakTextAsync(
+          text.trim(),
+          (speechResult) =>
+            resolve(speechResult),
+          (error) =>
+            reject(error)
+        );
+      }
+    );
+
+    if (
+      result.reason !==
+      sdk.ResultReason.SynthesizingAudioCompleted
+    ) {
+      console.error(
+        "❌ Azure Speech synthesis failed:",
+        result.errorDetails
+      );
+
+      return next(
+        new AppError(
+          result.errorDetails ||
+            "Azure Speech synthesis failed",
+          500
+        )
+      );
+    }
+
+    const audioBase64 =
+      Buffer.from(
+        result.audioData
+      ).toString("base64");
+
     return res.status(200).json({
       status: "success",
       data: {
@@ -472,16 +537,22 @@ export const verifyInterviewOtp = async (
         contentType: "audio/wav",
       },
     });
+
   } catch (error) {
-    console.error("❌ Azure TTS Error:", error);
+    console.error(
+      "❌ Azure TTS Error:",
+      error
+    );
+
     return next(
       new AppError(
-        error?.message || "Failed to generate speech using Azure Speech",
-        500,
-      ),
+        error?.message ||
+          "Failed to generate speech using Azure Speech",
+        500
+      )
     );
+
   } finally {
-    // 11. Cleanup
     if (speechSynthesizer) {
       speechSynthesizer.close();
     }
@@ -507,7 +578,7 @@ export const submitGuestAnswer = async (
     if (
       !interviewId ||
       questionIndex === undefined ||
-      !userAnswer
+      !userAnswer?.trim()
     ) {
       return res.status(400).json({
         status: "fail",
@@ -529,13 +600,19 @@ export const submitGuestAnswer = async (
       });
     }
 
-    if (
-      interview.status === "completed"
-    ) {
+    if (interview.status === "completed") {
       return res.status(400).json({
         status: "fail",
         message:
           "This session is already closed and evaluated",
+      });
+    }
+
+    if (interview.status !== "active") {
+      return res.status(400).json({
+        status: "fail",
+        message:
+          "Interview session is not active",
       });
     }
 
@@ -578,7 +655,8 @@ export const submitGuestAnswer = async (
 
       questionText,
 
-      userAnswer,
+      userAnswer:
+        userAnswer.trim(),
     });
 
     await interview.save();
@@ -614,6 +692,10 @@ export const submitAnswer = async (
       questionIndex,
     } = req.body;
 
+    // --------------------------------------------------
+    // 1. Basic Validation
+    // --------------------------------------------------
+
     if (
       !interviewId ||
       questionIndex === undefined
@@ -635,6 +717,10 @@ export const submitAnswer = async (
       );
     }
 
+    // --------------------------------------------------
+    // 2. Find Interview
+    // --------------------------------------------------
+
     const interview =
       await Interview.findOne({
         _id: interviewId,
@@ -650,8 +736,46 @@ export const submitAnswer = async (
       );
     }
 
+    // --------------------------------------------------
+    // 3. Interview Status Validation
+    // --------------------------------------------------
+
+    if (interview.status === "completed") {
+      return next(
+        new AppError(
+          "This interview session is already completed",
+          400
+        )
+      );
+    }
+
+    if (interview.status !== "active") {
+      return next(
+        new AppError(
+          "Interview session is not active",
+          400
+        )
+      );
+    }
+
+    // --------------------------------------------------
+    // 4. Question Validation
+    // --------------------------------------------------
+
     const parsedQuestionIndex =
       Number(questionIndex);
+
+    if (
+      !Number.isInteger(parsedQuestionIndex) ||
+      parsedQuestionIndex < 0
+    ) {
+      return next(
+        new AppError(
+          "Invalid question index provided",
+          400
+        )
+      );
+    }
 
     const questionText =
       interview.questions[
@@ -666,6 +790,10 @@ export const submitAnswer = async (
         )
       );
     }
+
+    // --------------------------------------------------
+    // 5. Duplicate Answer Check
+    // --------------------------------------------------
 
     const alreadyAnswered =
       interview.answers.some(
@@ -683,49 +811,78 @@ export const submitAnswer = async (
       );
     }
 
-    // ---------------------------------------------
-    // Deepgram
-    // ---------------------------------------------
+    // --------------------------------------------------
+    // 6. Audio Debug Information
+    // --------------------------------------------------
 
-    console.log("🎤 Audio received by backend:", {
-  mimetype: req.file.mimetype,
-  size: req.file.size,
-  originalname: req.file.originalname,
-});
-console.log("🎤 Audio buffer size:", req.file.buffer.length);
-  console.log("🎤 MIME:", req.file.mimetype);
-console.log("🎤 FILE SIZE:", req.file.size);
-console.log(
-  "🎤 BUFFER HEADER:",
-  req.file.buffer.subarray(0, 20).toString("hex")
-);
+    console.log(
+      "🎤 Audio received by backend:",
+      {
+        mimetype: req.file.mimetype,
+        size: req.file.size,
+        originalname:
+          req.file.originalname,
+      }
+    );
 
+    console.log(
+      "🎤 Audio buffer size:",
+      req.file.buffer.length
+    );
 
+    console.log(
+      "🎤 MIME:",
+      req.file.mimetype
+    );
 
-const response =
-  await deepgram.listen.v1.media.transcribeFile(
-    req.file.buffer,
-    {
-      model: "nova-3",
-      smart_format: true,
-      language: "en-US",
-      encoding: "opus",
-      container: "webm",
-    }
-  );
+    console.log(
+      "🎤 FILE SIZE:",
+      req.file.size
+    );
 
-console.log(
-  " Deepgram Full Response:",
-  response
-);
-   
+    console.log(
+      "🎤 BUFFER HEADER:",
+      req.file.buffer
+        .subarray(0, 20)
+        .toString("hex")
+    );
 
-   const transcript =
-  response?.results?.channels?.[0]
-    ?.alternatives?.[0]
-    ?.transcript?.trim();
+    // --------------------------------------------------
+    // 7. Deepgram Speech-to-Text
+    // --------------------------------------------------
 
-console.log("📝 Deepgram Transcript:", transcript);
+    const response =
+      await deepgram.listen.v1.media.transcribeFile(
+        req.file.buffer,
+        {
+          model: "nova-3",
+          smart_format: true,
+          language: "en-US",
+          encoding: "opus",
+          container: "webm",
+        }
+      );
+
+    console.log(
+      "🔊 Deepgram Full Response:",
+      response
+    );
+
+    const transcript =
+      response?.results
+        ?.channels?.[0]
+        ?.alternatives?.[0]
+        ?.transcript
+        ?.trim();
+
+    console.log(
+      "📝 Deepgram Transcript:",
+      transcript
+    );
+
+    // --------------------------------------------------
+    // 8. Empty Transcript Protection
+    // --------------------------------------------------
 
     if (!transcript) {
       return next(
@@ -736,16 +893,25 @@ console.log("📝 Deepgram Transcript:", transcript);
       );
     }
 
+    // --------------------------------------------------
+    // 9. Save Answer
+    // --------------------------------------------------
+
     interview.answers.push({
       questionIndex:
         parsedQuestionIndex,
 
       questionText,
 
-      userAnswer: transcript,
+      userAnswer:
+        transcript,
     });
 
     await interview.save();
+
+    // --------------------------------------------------
+    // 10. Response
+    // --------------------------------------------------
 
     return res.status(200).json({
       status: "success",
@@ -780,7 +946,12 @@ export const endInterview = async (
   next
 ) => {
   try {
-    const { interviewId } = req.body;
+    const { interviewId } =
+      req.body;
+
+    // --------------------------------------------------
+    // 1. Interview ID Validation
+    // --------------------------------------------------
 
     if (!interviewId) {
       return next(
@@ -790,6 +961,10 @@ export const endInterview = async (
         )
       );
     }
+
+    // --------------------------------------------------
+    // 2. Find Interview
+    // --------------------------------------------------
 
     const interview =
       await Interview.findOne({
@@ -806,6 +981,10 @@ export const endInterview = async (
       );
     }
 
+    // --------------------------------------------------
+    // 3. Completed Check
+    // --------------------------------------------------
+
     if (
       interview.status === "completed"
     ) {
@@ -816,6 +995,23 @@ export const endInterview = async (
         )
       );
     }
+
+    // --------------------------------------------------
+    // 4. Active Status Check
+    // --------------------------------------------------
+
+    if (interview.status !== "active") {
+      return next(
+        new AppError(
+          "Interview session is not active",
+          400
+        )
+      );
+    }
+
+    // --------------------------------------------------
+    // 5. Answers Check
+    // --------------------------------------------------
 
     if (
       !interview.answers ||
@@ -829,9 +1025,32 @@ export const endInterview = async (
       );
     }
 
+    // --------------------------------------------------
+    // 6. Complete Interview Check
+    // --------------------------------------------------
+
+    if (
+      interview.answers.length !==
+      interview.questions.length
+    ) {
+      return next(
+        new AppError(
+          `Interview is incomplete. Expected ${interview.questions.length} answers but received ${interview.answers.length}.`,
+          400
+        )
+      );
+    }
+
+    // --------------------------------------------------
+    // 7. Prepare Q&A Payload
+    // --------------------------------------------------
+
     const qaPayload =
       interview.answers.map(
         (item) => ({
+          questionIndex:
+            item.questionIndex,
+
           questionText:
             item.questionText,
 
@@ -840,21 +1059,95 @@ export const endInterview = async (
         })
       );
 
+    // --------------------------------------------------
+    // 8. AI Evaluation
+    // --------------------------------------------------
+
+    console.log(
+      "🤖 Starting AI interview evaluation..."
+    );
+
     const aiEvaluationReport =
       await evaluateInterviewSession(
         qaPayload
       );
 
+    // --------------------------------------------------
+    // 9. Validate AI Evaluation
+    // --------------------------------------------------
+
+    const validScore = (score) =>
+      typeof score === "number" &&
+      score >= 0 &&
+      score <= 10;
+
+    const isValidEvaluation =
+      aiEvaluationReport &&
+      validScore(
+        aiEvaluationReport.overallScore
+      ) &&
+      validScore(
+        aiEvaluationReport.technicalScore
+      ) &&
+      validScore(
+        aiEvaluationReport.communicationScore
+      ) &&
+      validScore(
+        aiEvaluationReport.problemSolvingScore
+      ) &&
+      Array.isArray(
+        aiEvaluationReport.strengths
+      ) &&
+      Array.isArray(
+        aiEvaluationReport.weaknesses
+      ) &&
+      Array.isArray(
+        aiEvaluationReport.recommendedTopics
+      ) &&
+      Array.isArray(
+        aiEvaluationReport.questionWiseEvaluation
+      ) &&
+      aiEvaluationReport
+        .questionWiseEvaluation.length ===
+        interview.questions.length;
+
+    if (!isValidEvaluation) {
+      console.error(
+        "❌ Invalid AI Evaluation:",
+        aiEvaluationReport
+      );
+
+      return next(
+        new AppError(
+          "AI returned an invalid evaluation report",
+          500
+        )
+      );
+    }
+
+    // --------------------------------------------------
+    // 10. Save Evaluation
+    // --------------------------------------------------
+
     interview.evaluation =
       aiEvaluationReport;
+
+    // --------------------------------------------------
+    // 11. Close Interview
+    // --------------------------------------------------
 
     interview.status =
       "completed";
 
     await interview.save();
 
+    // --------------------------------------------------
+    // 12. Response
+    // --------------------------------------------------
+
     return res.status(200).json({
       status: "success",
+
       message:
         "Interview evaluated successfully and session has been closed",
 
@@ -932,8 +1225,9 @@ export const getInterviewDetails = async (
   next
 ) => {
   try {
-    const { interviewId } =
-      req.params;
+    const {
+      interviewId,
+    } = req.params;
 
     const interview =
       await Interview.findOne({
@@ -963,52 +1257,74 @@ export const getInterviewDetails = async (
   }
 };
 
-export const getInterviewReport = async (req, res, next) => {
-    try {
-        const { interviewId } = req.params;
+// ==================================================
+// GET INTERVIEW REPORT
+// ==================================================
 
-        if (!interviewId) {
-            return next(
-                new AppError("Interview ID is required", 400)
-            );
-        }
+export const getInterviewReport = async (
+  req,
+  res,
+  next
+) => {
+  try {
+    const {
+      interviewId,
+    } = req.params;
 
-        const interview = await Interview.findOne({
-            _id: interviewId,
-            userId: req.user.id,
-        }).select(
-            "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt"
-        );
-
-        if (!interview) {
-            return next(
-                new AppError("Interview report not found", 404)
-            );
-        }
-
-        if (interview.status !== "completed") {
-            return next(
-                new AppError(
-                    "Interview has not been evaluated yet",
-                    400
-                )
-            );
-        }
-
-        return res.status(200).json({
-            status: "success",
-            message: "Interview report fetched successfully",
-            data: {
-                interview,
-            },
-        });
-
-    } catch (error) {
-        console.error(
-            "❌ Get Interview Report Error:",
-            error
-        );
-
-        return next(error);
+    if (!interviewId) {
+      return next(
+        new AppError(
+          "Interview ID is required",
+          400
+        )
+      );
     }
+
+    const interview =
+      await Interview.findOne({
+        _id: interviewId,
+        userId: req.user.id,
+      }).select(
+        "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt"
+      );
+
+    if (!interview) {
+      return next(
+        new AppError(
+          "Interview report not found",
+          404
+        )
+      );
+    }
+
+    if (
+      interview.status !== "completed"
+    ) {
+      return next(
+        new AppError(
+          "Interview has not been evaluated yet",
+          400
+        )
+      );
+    }
+
+    return res.status(200).json({
+      status: "success",
+
+      message:
+        "Interview report fetched successfully",
+
+      data: {
+        interview,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      "❌ Get Interview Report Error:",
+      error
+    );
+
+    return next(error);
+  }
 };
