@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import axios from "axios";
+import { useNavigate, useParams } from "react-router-dom";
 import {
-  FileBarChart,
-  Download,
-  LayoutDashboard,
-  CalendarDays,
-  Briefcase,
-  User,
+  ArrowLeft,
+  Loader2,
+  FileText,
 } from "lucide-react";
+
+import API from "../../services/api";
+import { candidateToast } from "../../utils/toast";
 
 import ReportOverview from "./ReportOverview";
 import SkillBreakdown from "./SkillBreakdown";
@@ -17,240 +16,159 @@ import ActionPlan from "./ActionPlan";
 
 export default function AIFeedbackReport() {
   const { interviewId } = useParams();
+  const navigate = useNavigate();
 
-  const [interview, setInterview] = useState(null);
+  const [evaluation, setEvaluation] = useState(null);
+  const [answers, setAnswers] = useState([]);
+  const [questionWiseEvaluation, setQuestionWiseEvaluation] =
+    useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+
+  const fetchReport = async () => {
+    try {
+      setLoading(true);
+
+      /*
+       * IMPORTANT:
+       * Yahan apne backend ke actual report endpoint ka
+       * path use karna.
+       */
+      const response = await API.get(
+        `/interview/getInterviewReport/${interviewId}`
+      );
+
+      const data = response?.data?.data || response?.data || {};
+
+      setEvaluation(data?.evaluation || data);
+      setAnswers(
+        data?.answers ||
+          data?.interview?.answers ||
+          []
+      );
+
+      setQuestionWiseEvaluation(
+        data?.questionWiseEvaluation ||
+          data?.evaluation?.questionWiseEvaluation ||
+          []
+      );
+    } catch (error) {
+      console.error("Report fetch error:", error);
+
+      candidateToast.error(
+        "Unable to load interview report"
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReport = async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const token = localStorage.getItem("token");
-
-        if (!token) {
-          setError("Authentication token not found. Please login again.");
-          return;
-        }
-
-        const response = await axios.get(
-          `http://localhost:5000/api/v1/interview/${interviewId}/report`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
-
-        console.log("📊 Interview Report Response:", response.data);
-
-        const interviewData = response.data?.data?.interview;
-
-        if (!interviewData) {
-          throw new Error("Interview report data was not found.");
-        }
-
-        if (!interviewData.evaluation) {
-          throw new Error("AI evaluation data is not available.");
-        }
-
-        setInterview(interviewData);
-      } catch (error) {
-        console.error("❌ Fetch Report Error:", error);
-
-        setError(
-          error.response?.data?.message ||
-            error.message ||
-            "Failed to load interview report"
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (interviewId) {
       fetchReport();
-    } else {
-      setError("Interview ID is missing.");
-      setLoading(false);
     }
   }, [interviewId]);
 
-  // -----------------------------
-  // Loading
-  // -----------------------------
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#030712] text-white">
-        <div className="text-center">
-          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-[#d90000]" />
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a]">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2
+            size={40}
+            className="animate-spin text-[#d90000]"
+          />
 
-          <p className="mt-4 text-[#eaecf0]/60">
-            Loading your AI interview report...
+          <p className="text-sm text-[#eaecf0]/60">
+            Generating interview report...
           </p>
         </div>
       </div>
     );
   }
 
-  // -----------------------------
-  // Error
-  // -----------------------------
-  if (error) {
+  if (!evaluation) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#030712] px-6 text-white">
-        <div className="max-w-lg rounded-3xl border border-red-500/20 bg-[#0d1538] p-8 text-center">
-          <h2 className="text-2xl font-bold">Unable to load report</h2>
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6">
+        <div className="text-center">
+          <FileText
+            size={50}
+            className="mx-auto text-[#eaecf0]/30"
+          />
 
-          <p className="mt-3 text-red-300">{error}</p>
+          <h2 className="mt-5 text-2xl font-bold text-white">
+            Report Not Found
+          </h2>
 
-          <Link
-            to="/candidatedashboard"
-            className="mt-6 inline-flex rounded-xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-5 py-3 font-semibold"
+          <p className="mt-2 text-[#eaecf0]/50">
+            We could not find the evaluation for this interview.
+          </p>
+
+          <button
+            onClick={() => navigate("/candidate-dashboard")}
+            className="mt-6 rounded-xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-6 py-3 font-semibold text-white"
           >
             Back to Dashboard
-          </Link>
+          </button>
         </div>
       </div>
     );
   }
 
-  if (!interview) {
-    return null;
-  }
-
-  const evaluation = interview.evaluation;
-
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] text-[#eaecf0]">
-      {/* Background Glow */}
-      <div className="absolute -left-32 -top-40 h-96 w-96 rounded-full bg-[#d90000]/15 blur-[180px]" />
-
-      <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-indigo-600/15 blur-[220px]" />
-
-      <div className="relative z-10 space-y-8 p-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 py-8 text-[#eaecf0] lg:px-10">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
-        <header className="rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 backdrop-blur-xl">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            {/* Left */}
-            <div>
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#d90000] to-indigo-600 shadow-lg">
-                  <FileBarChart className="text-white" size={28} />
-                </div>
-
-                <div>
-                  <h1 className="text-3xl font-bold text-white">
-                    AI Interview Evaluation Report
-                  </h1>
-
-                  <p className="mt-2 text-[#eaecf0]/60">
-                    Comprehensive AI-generated interview performance analysis.
-                  </p>
-                </div>
-              </div>
-
-              {/* Candidate Information */}
-              <div className="mt-6 flex flex-wrap gap-4 text-sm">
-                {/* Candidate */}
-                <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                  <User size={16} className="text-[#d90000]" />
-
-                  <span>Candidate</span>
-                </div>
-
-                {/* Job Title */}
-                {interview.jobTitle && (
-                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                    <Briefcase
-                      size={16}
-                      className="text-indigo-400"
-                    />
-
-                    <span>{interview.jobTitle}</span>
-                  </div>
-                )}
-
-                {/* Topics */}
-                {interview.topics?.length > 0 && (
-                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                    <Briefcase
-                      size={16}
-                      className="text-indigo-400"
-                    />
-
-                    <span>{interview.topics.join(", ")}</span>
-                  </div>
-                )}
-
-                {/* Date */}
-                {interview.createdAt && (
-                  <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2">
-                    <CalendarDays
-                      size={16}
-                      className="text-[#d90000]"
-                    />
-
-                    <span>
-                      {new Date(interview.createdAt).toLocaleDateString(
-                        "en-IN",
-                        {
-                          day: "numeric",
-                          month: "long",
-                          year: "numeric",
-                        }
-                      )}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Buttons */}
-            <div className="flex flex-wrap gap-4">
-              {/* PDF - functionality later */}
-              <button
-                type="button"
-                className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/5 px-6 py-4 text-white transition-all hover:bg-white/10"
-              >
-                <Download size={18} />
-                Download PDF
-              </button>
-
-              <Link
-                to="/candidatedashboard"
-                className="flex items-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-6 py-4 font-semibold text-white transition-all duration-300 hover:scale-105"
-              >
-                <LayoutDashboard size={18} />
-                Back to Dashboard
-              </Link>
-            </div>
-          </div>
-        </header>
-
-        {/* Overview */}
-        <ReportOverview evaluation={evaluation} />
-
-        {/* Middle */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <SkillBreakdown evaluation={evaluation} />
-          </div>
-
+        <div className="mb-8 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <ActionPlan evaluation={evaluation} />
+            <button
+              onClick={() => navigate("/candidate-dashboard")}
+              className="mb-5 flex items-center gap-2 text-sm text-[#eaecf0]/60 transition hover:text-white"
+            >
+              <ArrowLeft size={17} />
+              Back to Dashboard
+            </button>
+
+            <h1 className="text-4xl font-bold text-white">
+              AI Interview Report
+            </h1>
+
+            <p className="mt-2 text-[#eaecf0]/60">
+              Detailed AI analysis of your interview performance.
+            </p>
+          </div>
+
+          <div className="rounded-2xl border border-[#d90000]/20 bg-[#d90000]/10 px-5 py-3">
+            <p className="text-xs uppercase tracking-wider text-[#eaecf0]/50">
+              Interview ID
+            </p>
+
+            <p className="mt-1 max-w-[220px] truncate text-sm font-semibold text-[#ff8a8a]">
+              {interviewId}
+            </p>
           </div>
         </div>
 
+        {/* Overall */}
+        <ReportOverview evaluation={evaluation} />
+
+        {/* Skill Breakdown */}
+        <div className="mt-8">
+          <SkillBreakdown evaluation={evaluation} />
+        </div>
+
         {/* Transcript */}
-        <TranscriptCritique
-          answers={interview.answers || []}
-          questionWiseEvaluation={
-            evaluation?.questionWiseEvaluation || []
-          }
-        />
+        <div className="mt-8">
+          <TranscriptCritique
+            answers={answers}
+            questionWiseEvaluation={
+              questionWiseEvaluation
+            }
+          />
+        </div>
+
+        {/* Action Plan */}
+        <div className="mt-8">
+          <ActionPlan evaluation={evaluation} />
+        </div>
       </div>
     </div>
   );

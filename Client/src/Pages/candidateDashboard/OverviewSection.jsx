@@ -7,45 +7,109 @@ import {
   Rocket,
   ArrowRight,
 } from "lucide-react";
-import { Link } from "react-router-dom";
 
-export default function OverviewSection({ setActiveTab, onStartInterview })  {
+export default function OverviewSection({
+  interviews = [],
+  loading = false,
+  setActiveTab,
+  onStartInterview,
+}) {
+  const completedInterviews = interviews.filter(
+    (item) =>
+      item.status === "completed" ||
+      item.status === "Completed" ||
+      item.isCompleted === true
+  );
+
+  const scoredInterviews = interviews.filter(
+    (item) =>
+      item?.evaluation?.overallScore != null ||
+      item?.overallScore != null
+  );
+
+  const getScore = (interview) =>
+    Number(
+      interview?.evaluation?.overallScore ??
+        interview?.overallScore ??
+        interview?.score ??
+        0
+    );
+
+  const averageScore =
+    scoredInterviews.length > 0
+      ? Math.round(
+          scoredInterviews.reduce(
+            (total, interview) => total + getScore(interview),
+            0
+          ) / scoredInterviews.length
+        )
+      : 0;
+
+  const totalPracticeTime = interviews.reduce(
+    (total, interview) =>
+      total +
+      Number(
+        interview?.duration ??
+          interview?.durationMinutes ??
+          interview?.practiceTime ??
+          0
+      ),
+    0
+  );
+
+  const latestInterview = interviews.length > 0 ? interviews[0] : null;
+
+  const targetPosition =
+    latestInterview?.jobRole ||
+    latestInterview?.position ||
+    latestInterview?.targetPosition ||
+    "Not Set";
+
   const stats = [
     {
       label: "Average AI Score",
-      value: "78%",
+      value: `${averageScore}/10`,
       icon: Trophy,
       color: "from-[#d90000] to-red-600",
     },
     {
       label: "Interviews Taken",
-      value: "12",
+      value: completedInterviews.length,
       icon: Target,
       color: "from-indigo-500 to-indigo-700",
     },
     {
       label: "Practice Time",
-      value: "240 min",
+      value: `${totalPracticeTime} min`,
       icon: Clock3,
       color: "from-[#d90000] to-indigo-600",
     },
     {
       label: "Target Position",
-      value: "React Dev",
+      value: targetPosition,
       icon: Code2,
       color: "from-indigo-500 to-[#d90000]",
     },
   ];
 
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+        {[1, 2, 3, 4].map((item) => (
+          <div
+            key={item}
+            className="h-40 animate-pulse rounded-3xl border border-white/10 bg-[#0d1538]/80"
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
-      {/* Hero Card */}
-
-      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 backdrop-blur-xl p-8">
-        {/* Glow */}
-
-        <div className="absolute -top-20 -left-20 h-64 w-64 rounded-full bg-[#d90000]/20 blur-[130px]" />
-
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 backdrop-blur-xl">
+        <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-[#d90000]/20 blur-[130px]" />
         <div className="absolute -bottom-20 right-0 h-72 w-72 rounded-full bg-indigo-600/20 blur-[150px]" />
 
         <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -63,9 +127,9 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
             </h2>
 
             <p className="mt-5 max-w-xl leading-8 text-[#eaecf0]/70">
-              Practice with AI-powered interview simulations, receive instant
-              performance analytics, and improve your confidence before your
-              real interview.
+              Practice with AI-powered interview simulations, receive
+              instant performance analytics, and improve your confidence
+              before your real interview.
             </p>
 
             <button
@@ -87,14 +151,15 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
       </div>
 
       {/* Stats */}
-
       <div>
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">
             Performance Overview
           </h2>
 
-          <p className="text-sm text-[#eaecf0]/60">AI Generated Statistics</p>
+          <p className="text-sm text-[#eaecf0]/60">
+            Based on your interview history
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -104,7 +169,7 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
             return (
               <div
                 key={index}
-                className="group rounded-3xl border border-white/10 bg-[#0d1538]/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-[#d90000]/40 hover:shadow-[0_0_35px_rgba(217,0,0,.25)]"
+                className="group rounded-3xl border border-white/10 bg-[#0d1538]/80 p-6 backdrop-blur-xl transition-all duration-300 hover:-translate-y-2 hover:border-[#d90000]/40"
               >
                 <div
                   className={`flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${stat.color}`}
@@ -112,9 +177,11 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
                   <Icon size={26} className="text-white" />
                 </div>
 
-                <p className="mt-6 text-sm text-[#eaecf0]/60">{stat.label}</p>
+                <p className="mt-6 text-sm text-[#eaecf0]/60">
+                  {stat.label}
+                </p>
 
-                <h3 className="mt-2 text-3xl font-bold text-white">
+                <h3 className="mt-2 truncate text-3xl font-bold text-white">
                   {stat.value}
                 </h3>
               </div>
@@ -123,8 +190,7 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
         </div>
       </div>
 
-      {/* Bottom Card */}
-
+      {/* Bottom */}
       <div className="rounded-3xl border border-white/10 bg-[#0d1538]/80 p-6 backdrop-blur-xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
           <div>
@@ -133,8 +199,8 @@ export default function OverviewSection({ setActiveTab, onStartInterview })  {
             </h3>
 
             <p className="mt-2 text-[#eaecf0]/60">
-              Explore detailed AI reports, feedback, and performance analytics
-              from your completed interview sessions.
+              Explore detailed AI reports, feedback, and performance
+              analytics from your completed interview sessions.
             </p>
           </div>
 
