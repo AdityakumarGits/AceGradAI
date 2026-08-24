@@ -1,13 +1,32 @@
 // src/pages/AIFeedbackReport/ActionPlan.jsx
 
 import React from "react";
-import { Sparkles, TrendingUp, Target, BookOpen } from "lucide-react";
+import {
+  Sparkles,
+  TrendingUp,
+  Target,
+  BookOpen,
+} from "lucide-react";
 
 export default function ActionPlan({ evaluation }) {
-  const strengths = evaluation?.strengths || [];
-  const weaknesses = evaluation?.weaknesses || [];
-  const recommendedTopics = evaluation?.recommendedTopics || [];
-  const feedbackSummary = evaluation?.feedbackSummary || "";
+  const strengths = Array.isArray(evaluation?.strengths)
+    ? evaluation.strengths
+    : [];
+
+  const weaknesses = Array.isArray(evaluation?.weaknesses)
+    ? evaluation.weaknesses
+    : [];
+
+  const recommendedTopics = Array.isArray(
+    evaluation?.recommendedTopics
+  )
+    ? evaluation.recommendedTopics
+    : [];
+
+  const feedbackSummary =
+    typeof evaluation?.feedbackSummary === "string"
+      ? evaluation.feedbackSummary
+      : "";
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#0d1538]/80 backdrop-blur-xl">
@@ -17,7 +36,6 @@ export default function ActionPlan({ evaluation }) {
       <div className="absolute bottom-0 -left-10 h-52 w-52 rounded-full bg-indigo-500/20 blur-[120px]" />
 
       <div className="relative p-8">
-
         {/* Header */}
         <div>
           <div className="flex items-center gap-3">
@@ -42,7 +60,10 @@ export default function ActionPlan({ evaluation }) {
           <div className="mt-8 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-5">
             <div className="flex items-center gap-3">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20">
-                <Sparkles className="text-indigo-400" size={22} />
+                <Sparkles
+                  className="text-indigo-400"
+                  size={22}
+                />
               </div>
 
               <h3 className="font-semibold text-indigo-300">
@@ -60,7 +81,10 @@ export default function ActionPlan({ evaluation }) {
         <div className="mt-6 rounded-2xl border border-green-500/20 bg-green-500/10 p-5 transition-all duration-300 hover:border-green-500/40">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-500/20">
-              <TrendingUp className="text-green-400" size={22} />
+              <TrendingUp
+                className="text-green-400"
+                size={22}
+              />
             </div>
 
             <h3 className="font-semibold text-green-400">
@@ -72,7 +96,7 @@ export default function ActionPlan({ evaluation }) {
             <ul className="mt-4 space-y-3">
               {strengths.map((strength, index) => (
                 <li
-                  key={index}
+                  key={`${index}-${strength}`}
                   className="flex items-start gap-3 text-sm leading-7 text-[#eaecf0]/70"
                 >
                   <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-green-400" />
@@ -92,7 +116,10 @@ export default function ActionPlan({ evaluation }) {
         <div className="mt-6 rounded-2xl border border-[#d90000]/20 bg-[#d90000]/10 p-5 transition-all duration-300 hover:border-[#d90000]/40">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#d90000]/20">
-              <Target className="text-[#ff6b6b]" size={22} />
+              <Target
+                className="text-[#ff6b6b]"
+                size={22}
+              />
             </div>
 
             <h3 className="font-semibold text-[#ff8a8a]">
@@ -104,7 +131,7 @@ export default function ActionPlan({ evaluation }) {
             <ul className="mt-4 space-y-3">
               {weaknesses.map((weakness, index) => (
                 <li
-                  key={index}
+                  key={`${index}-${weakness}`}
                   className="flex items-start gap-3 text-sm leading-7 text-[#eaecf0]/70"
                 >
                   <span className="mt-2 h-2 w-2 shrink-0 rounded-full bg-[#ff6b6b]" />
@@ -124,7 +151,10 @@ export default function ActionPlan({ evaluation }) {
         <div className="mt-6 rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/20">
-              <BookOpen className="text-indigo-400" size={22} />
+              <BookOpen
+                className="text-indigo-400"
+                size={22}
+              />
             </div>
 
             <h3 className="font-semibold text-indigo-300">
@@ -136,7 +166,7 @@ export default function ActionPlan({ evaluation }) {
             <div className="mt-4 flex flex-wrap gap-2">
               {recommendedTopics.map((topic, index) => (
                 <span
-                  key={index}
+                  key={`${index}-${topic}`}
                   className="rounded-full border border-indigo-400/20 bg-indigo-500/10 px-3 py-2 text-xs text-indigo-200"
                 >
                   {topic}
@@ -153,15 +183,15 @@ export default function ActionPlan({ evaluation }) {
         {/* AceGrad Tip */}
         <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-5">
           <h4 className="font-semibold text-white">
-             AceGrad AI Tip
+            AceGrad AI Tip
           </h4>
 
           <p className="mt-3 text-sm leading-7 text-[#eaecf0]/60">
-            Use the weaknesses and recommended topics above to focus your next
-            practice session instead of repeating the same interview questions.
+            Use the weaknesses and recommended topics above to focus
+            your next practice session instead of repeating the same
+            interview questions.
           </p>
         </div>
-
       </div>
     </div>
   );
