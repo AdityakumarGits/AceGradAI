@@ -271,9 +271,7 @@ export const startInterview = async (req, res, next) => {
     const newInterview =
       await Interview.create({
         userId,
-
         questionsSources,
-
         jobTitle:
           questionsSources === "jd"
             ? jobTitle.trim()
@@ -307,7 +305,7 @@ export const startInterview = async (req, res, next) => {
 
         accessOtp: generatedOtp,
 
-        status: "pending",
+        status: "active",
       });
 
     // --------------------------------------------------

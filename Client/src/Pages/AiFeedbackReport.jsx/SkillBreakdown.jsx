@@ -57,9 +57,14 @@ export default function SkillBreakdown({ evaluation }) {
 
         {/* Metrics */}
         <div className="mt-8 space-y-7">
-
           {metrics.map((item, index) => {
             const Icon = item.icon;
+
+            // Keep score safely between 0 and 10
+            const score = Math.min(
+              10,
+              Math.max(0, Number(item.score) || 0)
+            );
 
             return (
               <div
@@ -68,9 +73,7 @@ export default function SkillBreakdown({ evaluation }) {
               >
                 {/* Title */}
                 <div className="mb-4 flex items-center justify-between">
-
                   <div className="flex items-center gap-4">
-
                     <div
                       className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${item.gradient}`}
                     >
@@ -89,13 +92,11 @@ export default function SkillBreakdown({ evaluation }) {
                         AI Performance Metric
                       </p>
                     </div>
-
                   </div>
 
                   <span className="text-xl font-bold text-white">
-                    {item.score}/10
+                    {score}/10
                   </span>
-
                 </div>
 
                 {/* Progress */}
@@ -103,16 +104,15 @@ export default function SkillBreakdown({ evaluation }) {
                   <div
                     className={`h-full rounded-full bg-gradient-to-r ${item.gradient} transition-all duration-700`}
                     style={{
-                      width: `${item.score * 10}%`,
+                      width: `${score * 10}%`,
                     }}
                   />
                 </div>
-
               </div>
             );
           })}
-
         </div>
+
       </div>
     </div>
   );
