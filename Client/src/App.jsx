@@ -1,3 +1,5 @@
+// src/App.jsx
+
 import { Routes, Route } from "react-router-dom";
 
 import Home from "./Pages/Home";
@@ -14,46 +16,121 @@ import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
 import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
 import VerifyOTP from "./Pages/VerifyOTP";
 import PrivateRoute from "./context/PrivateRoute";
-import InterviewConfig from "./Pages/InterviewConfig/InterviewConfig";
 
 const App = () => {
   return (
     <Routes>
-      {/* Landing Page */}
-      <Route path="/" element={<Home />} />
 
-      {/* Auth */}
-      <Route path="/candidatesignup" element={<CandidateSignup />} />
-      <Route path="/verifyotp" element={<VerifyOTP />} />
-      <Route path="/candidatelogin" element={<CandidateLogin />} />
-      <Route path="/companysignup" element={<CompanySignup />} />
-      <Route path="/companylogin" element={<CompanyLogin />} />
-      <Route path="/forget-password" element={<ForgetPassword />} />
+      {/* =====================================================
+          LANDING
+      ====================================================== */}
 
-      {/*  Protected Routes (Candidate) */}
+      <Route
+        path="/"
+        element={<Home />}
+      />
+
+      {/* =====================================================
+          AUTH
+      ====================================================== */}
+
+      <Route
+        path="/candidatesignup"
+        element={<CandidateSignup />}
+      />
+
+      <Route
+        path="/verifyotp"
+        element={<VerifyOTP />}
+      />
+
+      <Route
+        path="/candidatelogin"
+        element={<CandidateLogin />}
+      />
+
+      <Route
+        path="/companysignup"
+        element={<CompanySignup />}
+      />
+
+      <Route
+        path="/companylogin"
+        element={<CompanyLogin />}
+      />
+
+      <Route
+        path="/forget-password"
+        element={<ForgetPassword />}
+      />
+
+      {/* =====================================================
+          PROTECTED CANDIDATE ROUTES
+      ====================================================== */}
+
       <Route element={<PrivateRoute />}>
-        <Route path="/candidatedashboard" element={<CandidateDashboard />} />
-       
-         <Route path="/interviewsetup" element={<InterviewSetup />} />
-        <Route path="/startinterview" element={<StartInterview />} />
-        <Route path="/feedback" element={<AIFeedbackReport />} />
+
+        {/* Candidate Dashboard */}
+
+        <Route
+          path="/candidatedashboard"
+          element={<CandidateDashboard />}
+        />
+
+        {/* Interview Setup */}
+
+        <Route
+          path="/interviewsetup"
+          element={<InterviewSetup />}
+        />
+
+        {/* Start Interview */}
+
+        <Route
+          path="/startinterview"
+          element={<StartInterview />}
+        />
+
+        {/* AI Feedback Report */}
+
+        <Route
+          path="/feedback/:interviewId"
+          element={<AIFeedbackReport />}
+        />
+
       </Route>
 
-      {/* Company side — abhi unprotected hai, tumne bola company baad me banaoge */}
-      <Route path="/companydashboard" element={<CompanyDashboard />} />
+      {/* =====================================================
+          COMPANY
+      ====================================================== */}
 
-      {/* Contact Page */}
-      <Route path="/contact" element={<Contact />} />
+      <Route
+        path="/companydashboard"
+        element={<CompanyDashboard />}
+      />
 
-      {/* 404 */}
+      {/* =====================================================
+          CONTACT
+      ====================================================== */}
+
+      <Route
+        path="/contact"
+        element={<Contact />}
+      />
+
+      {/* =====================================================
+          404
+      ====================================================== */}
+
       <Route
         path="*"
         element={
-          <div className="flex h-screen items-center justify-center text-3xl font-bold">
+          <div className="flex h-screen items-center justify-center bg-[#030712] text-3xl font-bold text-white">
             404 - Page Not Found
           </div>
         }
       />
+
     </Routes>
   );
 };
