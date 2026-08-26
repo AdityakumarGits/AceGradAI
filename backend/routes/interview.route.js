@@ -14,7 +14,8 @@ const upload = multer({ storage: multer.memoryStorage() });
 // resume-mode me PDF file 'resume' field-name se aayegi
 router.post("/startInterview", protect, upload.single("resume"), startInterview);
  
-// candidate ka spoken-answer 'audio' field-name se aayega
+// candidate ka spoken-answer 'audio' field-name se aayega 
+//protected route
 router.post("/submitAnswer", protect, upload.single("audio"), submitAnswer);
  
 router.post("/textToSpeech", protect, textToSpeech);
