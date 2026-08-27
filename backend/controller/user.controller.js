@@ -57,7 +57,8 @@ export const SendOtp = async (req, res, next) => {
     }
 }
 
-    //Verify OTP
+    //Verify OTP 
+    //of Login    
  export const verifyOTP=async(req,res,next)=>{
   try {
      const {email,otp}=req.body;
