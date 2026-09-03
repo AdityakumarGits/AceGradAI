@@ -68,42 +68,42 @@ export default function StartInterview() {
   const recoveryStartedRef = useRef(false);
   // Prevent online event from triggering multiple recoveries
   const reconnectingRef = useRef(false);
-useEffect(() => {
-  return () => {
-    isUnmountingRef.current = true;
+  useEffect(() => {
+    return () => {
+      isUnmountingRef.current = true;
 
-    stopSilenceDetection();
+      stopSilenceDetection();
 
-    if (
-      mediaRecorderRef.current &&
-      mediaRecorderRef.current.state === "recording"
-    ) {
-      mediaRecorderRef.current.stop();
-    }
+      if (
+        mediaRecorderRef.current &&
+        mediaRecorderRef.current.state === "recording"
+      ) {
+        mediaRecorderRef.current.stop();
+      }
 
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
+      if (audioElementRef.current) {
+        audioElementRef.current.pause();
 
-      audioElementRef.current.onended = null;
-      audioElementRef.current.onerror = null;
-      audioElementRef.current.onabort = null;
+        audioElementRef.current.onended = null;
+        audioElementRef.current.onerror = null;
+        audioElementRef.current.onabort = null;
 
-      audioElementRef.current = null;
-    }
+        audioElementRef.current = null;
+      }
 
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
-      audioUrlRef.current = null;
-    }
+      if (audioUrlRef.current) {
+        URL.revokeObjectURL(audioUrlRef.current);
+        audioUrlRef.current = null;
+      }
 
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
+      if (mediaStreamRef.current) {
+        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+        mediaStreamRef.current = null;
+      }
 
-    // ACTIVE_INTERVIEW_KEY intentionally clear mat karna
-  };
-}, []);
+      // ACTIVE_INTERVIEW_KEY intentionally clear mat karna
+    };
+  }, []);
   // =========================================================
   // CONSTANTS
   // =========================================================
@@ -230,84 +230,81 @@ useEffect(() => {
       // INVALID STATUS
       // -------------------------------------------------------
 
-     if (interview.status !== "active") {
-  throw new Error(
-    `This interview session cannot be recovered. Current status: ${interview.status}`
-  );
-}
+      if (interview.status !== "active") {
+        throw new Error(
+          `This interview session cannot be recovered. Current status: ${interview.status}`,
+        );
+      }
 
-     // -------------------------------------------------------
-// RESTORE INTERVIEW
-// -------------------------------------------------------
+      // -------------------------------------------------------
+      // RESTORE INTERVIEW
+      // -------------------------------------------------------
 
-const recoveredQuestions = Array.isArray(interview.questions)
-  ? interview.questions
-  : [];
+      const recoveredQuestions = Array.isArray(interview.questions)
+        ? interview.questions
+        : [];
 
-const recoveredAnswers = Array.isArray(interview.answers)
-  ? interview.answers
-  : [];
+      const recoveredAnswers = Array.isArray(interview.answers)
+        ? interview.answers
+        : [];
 
-if (recoveredQuestions.length === 0) {
-  throw new Error("Interview questions could not be recovered.");
-}
+      if (recoveredQuestions.length === 0) {
+        throw new Error("Interview questions could not be recovered.");
+      }
 
-// Find the first question that has not been answered yet
-const nextQuestionIndex = getNextUnansweredQuestionIndex(
-  recoveredQuestions,
-  recoveredAnswers
-);
+      // Find the first question that has not been answered yet
+      const nextQuestionIndex = getNextUnansweredQuestionIndex(
+        recoveredQuestions,
+        recoveredAnswers,
+      );
 
-// -------------------------------------------------------
-// ALL QUESTIONS ALREADY ANSWERED
-// -------------------------------------------------------
+      // -------------------------------------------------------
+      // ALL QUESTIONS ALREADY ANSWERED
+      // -------------------------------------------------------
 
-if (nextQuestionIndex >= recoveredQuestions.length) {
-  console.log("✅ All questions were already answered.");
+      if (nextQuestionIndex >= recoveredQuestions.length) {
+        console.log("✅ All questions were already answered.");
 
-  const response = await API.post("/interview/endInterview", {
-    interviewId: interview._id,
-  });
+        const response = await API.post("/interview/endInterview", {
+          interviewId: interview._id,
+        });
 
-  const result = response?.data?.data;
+        const result = response?.data?.data;
 
-  setInterviewID(interview._id);
-  setQuestions(recoveredQuestions);
-  setEvaluation(result?.evaluation || null);
-  setIsComplete(true);
+        setInterviewID(interview._id);
+        setQuestions(recoveredQuestions);
+        setEvaluation(result?.evaluation || null);
+        setIsComplete(true);
 
-  clearActiveInterview();
+        clearActiveInterview();
 
-  console.log("✅ Interview completed during recovery.");
+        console.log("✅ Interview completed during recovery.");
 
-  return true;
-}
+        return true;
+      }
 
-// -------------------------------------------------------
-// RESTORE ACTIVE INTERVIEW
-// -------------------------------------------------------
+      // -------------------------------------------------------
+      // RESTORE ACTIVE INTERVIEW
+      // -------------------------------------------------------
 
-setInterviewID(interview._id);
-setQuestions(recoveredQuestions);
-setCurrentQuestionIdx(nextQuestionIndex);
+      setInterviewID(interview._id);
+      setQuestions(recoveredQuestions);
+      setCurrentQuestionIdx(nextQuestionIndex);
 
-// Important:
-// Welcome should NOT play again after refresh.
-hasWelcomedRef.current = true;
+      // Important:
+      // Welcome should NOT play again after refresh.
+      hasWelcomedRef.current = true;
 
-interviewStartedRef.current = true;
+      interviewStartedRef.current = true;
 
-saveActiveInterview(interview._id);
+      saveActiveInterview(interview._id);
 
-console.log("✅ Interview recovered successfully.");
-console.log("📌 Questions:", recoveredQuestions);
-console.log("📌 Answers:", recoveredAnswers);
-console.log(
-  "📌 Resuming from question:",
-  nextQuestionIndex + 1
-);
+      console.log("✅ Interview recovered successfully.");
+      console.log("📌 Questions:", recoveredQuestions);
+      console.log("📌 Answers:", recoveredAnswers);
+      console.log("📌 Resuming from question:", nextQuestionIndex + 1);
 
-return true;
+      return true;
     } catch (error) {
       console.error("❌ Interview Recovery Error:", error);
 
@@ -381,8 +378,6 @@ return true;
         if (!resumeFile) {
           throw new Error("Resume file is missing.");
         }
-     
-
 
         const formData = new FormData();
 
@@ -397,11 +392,10 @@ return true;
       }
       console.log("Start Interview Response:", response?.data);
 
-    
-const interview = response?.data?.data?.interview;
-if (!interview?._id) {
-  throw new Error("Interview session could not be created.");
-}
+      const interview = response?.data?.data?.interview;
+      if (!interview?._id) {
+        throw new Error("Interview session could not be created.");
+      }
       if (
         !Array.isArray(interview.questions) ||
         interview.questions.length === 0
@@ -544,39 +538,37 @@ if (!interview?._id) {
   // =========================================================
   // 4. QUESTION CHANGE → WELCOME OR TTS
   // =========================================================
-useEffect(() => {
-  if (questions.length === 0 || !interviewID || isComplete) {
-    return;
-  }
+  useEffect(() => {
+    if (questions.length === 0 || !interviewID || isComplete) {
+      return;
+    }
 
-  const question = questions[currentQuestionIdx];
+    const question = questions[currentQuestionIdx];
 
-  console.log("🧪 CURRENT QUESTION:", question);
+    console.log("🧪 CURRENT QUESTION:", question);
 
-  if (!question) {
-    return;
-  }
+    if (!question) {
+      return;
+    }
 
-  const questionText =
-    typeof question === "string"
-      ? question
-      : question?.questionText || "";
+    const questionText =
+      typeof question === "string" ? question : question?.questionText || "";
 
-  console.log("🧪 QUESTION TEXT:", questionText);
+    console.log("🧪 QUESTION TEXT:", questionText);
 
-  if (!questionText) {
-    return;
-  }
+    if (!questionText) {
+      return;
+    }
 
-  if (!hasWelcomedRef.current) {
-    hasWelcomedRef.current = true;
-    speakWelcomeThenQuestion(questionText);
-  } else {
-    speakQuestion(questionText);
-  }
+    if (!hasWelcomedRef.current) {
+      hasWelcomedRef.current = true;
+      speakWelcomeThenQuestion(questionText);
+    } else {
+      speakQuestion(questionText);
+    }
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [currentQuestionIdx, questions, interviewID, isComplete]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentQuestionIdx, questions, interviewID, isComplete]);
 
   // =========================================================
   // 5. TTS — GENERIC AUDIO PLAY HELPER
@@ -844,10 +836,10 @@ useEffect(() => {
       };
 
       recorder.onstop = () => {
-          if (isUnmountingRef.current) {
-    console.log("🧹 Recording stopped because component is unmounting.");
-    return;
-  }
+        if (isUnmountingRef.current) {
+          console.log("🧹 Recording stopped because component is unmounting.");
+          return;
+        }
         handleRecordingStopped(mimeType || "audio/webm");
       };
 
@@ -1371,9 +1363,13 @@ useEffect(() => {
                 type="button"
                 onClick={() => {
                   const question = questions[currentQuestionIdx];
+                  const questionText =
+                    typeof question === "string"
+                      ? question
+                      : question?.questionText || "";
 
-                  if (question?.questionText) {
-                    speakQuestion(question.questionText);
+                  if (questionText) {
+                    speakQuestion(questionText);
                   }
                 }}
                 className="ml-3 rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30"

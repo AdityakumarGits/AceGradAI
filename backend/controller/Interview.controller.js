@@ -305,7 +305,7 @@ export const startInterview = async (req, res, next) => {
 
         accessOtp: generatedOtp,
 
-        status: "active",
+       status: finalInterviewType === "campaign" ? "pending" : "active",
       });
 
     // --------------------------------------------------
