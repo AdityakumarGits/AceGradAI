@@ -738,23 +738,42 @@ export const submitAnswer = async (
     // 3. Interview Status Validation
     // --------------------------------------------------
 
-    if (interview.status === "completed") {
-      return next(
-        new AppError(
-          "This interview session is already completed",
-          400
-        )
-      );
-    }
+    // if (interview.status === "completed") {
+    //   return next(
+    //     new AppError(
+    //       "This interview session is already completed",
+    //       400
+    //     )
+    //   );
+    // }
 
-    if (interview.status !== "active") {
-      return next(
-        new AppError(
-          "Interview session is not active",
-          400
-        )
-      );
-    }
+    // if (interview.status !== "active") {
+    //   return next(
+    //     new AppError(
+    //       "Interview session is not active",
+    //       400
+    //     )
+    //   );
+    // }
+    if (interview.status === "completed") {
+  setInterviewID(interview._id);
+  setQuestions(interview.questions || []);
+  setEvaluation(interview.evaluation || null);
+  setIsComplete(true);
+
+  clearActiveInterview();
+
+  console.log("✅ Interview was already completed.");
+  return true;
+}
+
+if (interview.status !== "active") {
+  clearActiveInterview();
+
+  throw new Error(
+    `This interview session cannot be recovered. Current status: ${interview.status}`
+  );
+}
 
     // --------------------------------------------------
     // 4. Question Validation
