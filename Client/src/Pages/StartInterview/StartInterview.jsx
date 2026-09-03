@@ -381,6 +381,8 @@ return true;
         if (!resumeFile) {
           throw new Error("Resume file is missing.");
         }
+     
+
 
         const formData = new FormData();
 
@@ -395,11 +397,11 @@ return true;
       }
       console.log("Start Interview Response:", response?.data);
 
-      const interview = response?.data?.data?.interview;
-      if (!interview?._id) {
-        throw new Error("Interview session was not created.");
-      }
-
+    
+const interview = response?.data?.data?.interview;
+if (!interview?._id) {
+  throw new Error("Interview session could not be created.");
+}
       if (
         !Array.isArray(interview.questions) ||
         interview.questions.length === 0
@@ -542,33 +544,39 @@ return true;
   // =========================================================
   // 4. QUESTION CHANGE → WELCOME OR TTS
   // =========================================================
+useEffect(() => {
+  if (questions.length === 0 || !interviewID || isComplete) {
+    return;
+  }
 
-  useEffect(() => {
-    if (questions.length === 0 || !interviewID || isComplete) {
-      return;
-    }
+  const question = questions[currentQuestionIdx];
 
-    const question = questions[currentQuestionIdx];
+  console.log("🧪 CURRENT QUESTION:", question);
 
-    if (!question) {
-      return;
-    }
+  if (!question) {
+    return;
+  }
 
-    // If this question has no text, don't attempt TTS.
-    if (!question.questionText) {
-      return;
-    }
+  const questionText =
+    typeof question === "string"
+      ? question
+      : question?.questionText || "";
 
-    if (!hasWelcomedRef.current) {
-      hasWelcomedRef.current = true;
+  console.log("🧪 QUESTION TEXT:", questionText);
 
-      speakWelcomeThenQuestion(question.questionText);
-    } else {
-      speakQuestion(question.questionText);
-    }
+  if (!questionText) {
+    return;
+  }
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIdx, questions, interviewID, isComplete]);
+  if (!hasWelcomedRef.current) {
+    hasWelcomedRef.current = true;
+    speakWelcomeThenQuestion(questionText);
+  } else {
+    speakQuestion(questionText);
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentQuestionIdx, questions, interviewID, isComplete]);
 
   // =========================================================
   // 5. TTS — GENERIC AUDIO PLAY HELPER
