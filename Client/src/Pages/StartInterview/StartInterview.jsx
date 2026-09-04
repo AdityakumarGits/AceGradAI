@@ -46,6 +46,8 @@ export default function StartInterview() {
   const [evaluation, setEvaluation] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [hasFailedAnswer, setHasFailedAnswer] = useState(false);
+  const [evaluationError, setEvaluationError] = useState(false);
+const [isEvaluating, setIsEvaluating] = useState(false);
 
   // =========================================================
   // REFS
@@ -1114,7 +1116,6 @@ export default function StartInterview() {
       });
 
       const response = await API.post("/interview/submitAnswer", formData);
-
       console.log("✅ Answer submitted:", response.data);
 
       // ---------------------------------------------
@@ -1195,40 +1196,37 @@ export default function StartInterview() {
     }
 
     try {
-      setErrorMsg(null);
-
+        setErrorMsg(null);
+    setEvaluationError(false);
+    setIsEvaluating(true);
       console.log("🏁 Ending interview:", interviewID);
-
       const response = await API.post("/interview/endInterview", {
         interviewId: interviewID,
       });
 
       console.log("📊 Interview Evaluation:", response.data);
-
       const result = response?.data?.data;
-
       setEvaluation(result?.evaluation || null);
-
       setIsComplete(true);
 
       // Interview is successfully completed.
       clearActiveInterview();
     } catch (error) {
       console.error("❌ End Interview Error:", error);
-
       console.log("STATUS:", error.response?.status);
-
       console.log("BACKEND RESPONSE:", error.response?.data);
-
+setEvaluationError(true);
       setErrorMsg(
         error.response?.data?.message ||
-          "Interview evaluation generate nahi ho payi.",
+           "We couldn't generate your evaluation. Your answers are safely saved. Please retry.",
       );
 
       // IMPORTANT:
       // Do NOT clear active interview here.
       // If evaluation API fails, refresh can recover
       // the interview again.
+      } finally {
+    setIsEvaluating(false);
     }
   };
 
@@ -1259,25 +1257,19 @@ export default function StartInterview() {
 
       if (audioElementRef.current) {
         audioElementRef.current.pause();
-
         audioElementRef.current.onended = null;
-
         audioElementRef.current.onerror = null;
-
         audioElementRef.current.onabort = null;
-
         audioElementRef.current = null;
       }
 
       if (audioUrlRef.current) {
         URL.revokeObjectURL(audioUrlRef.current);
-
         audioUrlRef.current = null;
       }
 
       if (mediaStreamRef.current) {
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-
         mediaStreamRef.current = null;
       }
 
@@ -1322,49 +1314,272 @@ export default function StartInterview() {
 
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
 
-          {evaluation && (
-            <div className="mt-8 text-left">
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                <p className="text-sm text-[#9aa1b4]">Overall Score</p>
+         {/* Evaluation Error / Retry */}
+{evaluationError && !evaluation && !isComplete && (
+  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+      <AlertCircle className="h-6 w-6 text-red-400" />
+    </div>
 
-                <p className="mt-2 text-5xl font-bold text-white">
-                  {evaluation.overallScore}
+    <h3 className="text-lg font-semibold text-white">
+      Evaluation Failed
+    </h3>
 
-                  <span className="text-2xl text-[#9aa1b4]">/10</span>
-                </p>
-              </div>
+    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+      Your interview answers are safely saved, but we couldn't
+      generate your evaluation right now.
+    </p>
 
-              {evaluation.feedbackSummary && (
-                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-                  <h3 className="font-semibold text-white">Feedback</h3>
+    <button
+      onClick={finishInterview}
+      disabled={isEvaluating || isOffline}
+      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isEvaluating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Generating Evaluation...
+        </>
+      ) : (
+        "Retry Evaluation"
+      )}
+    </button>
 
-                  <p className="mt-2 text-sm leading-6 text-[#b8becd]">
-                    {evaluation.feedbackSummary}
-                  </p>
-                </div>
-              )}
+    {isOffline && (
+      <p className="mt-3 text-xs text-red-300">
+        Internet connection lost. Reconnect and try again.
+      </p>
+    )}
+  </div>
+)}
 
-              {Array.isArray(evaluation.skillsAssessment) &&
-                evaluation.skillsAssessment.length > 0 && (
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h3 className="font-semibold text-white">
-                      Skills Assessment
-                    </h3>
+{/* Evaluation Loading */}
+{isEvaluating && (
+  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
 
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {evaluation.skillsAssessment.map((skill, index) => (
-                        <span
-                          key={index}
-                          className="rounded-full border border-[#6366f1]/30 bg-[#6366f1]/10 px-3 py-1.5 text-xs text-[#d7d9e3]"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-            </div>
-          )}
+    <p className="mt-3 font-medium text-white">
+      Generating your evaluation...
+    </p>
+
+    <p className="mt-1 text-sm text-[#9aa1b4]">
+      Please wait while AI analyzes your interview.
+    </p>
+  </div>
+)}
+
+{/* Evaluation Error / Retry */}
+{evaluationError && !evaluation && !isComplete && (
+  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+      <AlertCircle className="h-6 w-6 text-red-400" />
+    </div>
+
+    <h3 className="text-lg font-semibold text-white">
+      Evaluation Failed
+    </h3>
+
+    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+      Your interview answers are safely saved, but we couldn't
+      generate your evaluation right now.
+    </p>
+
+    <button
+      onClick={finishInterview}
+      disabled={isEvaluating || isOffline}
+      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isEvaluating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Generating Evaluation...
+        </>
+      ) : (
+        "Retry Evaluation"
+      )}
+    </button>
+
+    {isOffline && (
+      <p className="mt-3 text-xs text-red-300">
+        Internet connection lost. Reconnect and try again.
+      </p>
+    )}
+  </div>
+)}
+
+{/* Evaluation Loading */}
+{isEvaluating && (
+  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+    <p className="mt-3 font-medium text-white">
+      Generating your evaluation...
+    </p>
+
+    <p className="mt-1 text-sm text-[#9aa1b4]">
+      Please wait while AI analyzes your interview.
+    </p>
+  </div>
+)}
+
+{/* Evaluation Error / Retry */}
+{evaluationError && !evaluation && !isComplete && (
+  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+      <AlertCircle className="h-6 w-6 text-red-400" />
+    </div>
+
+    <h3 className="text-lg font-semibold text-white">
+      Evaluation Failed
+    </h3>
+
+    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+      Your interview answers are safely saved, but we couldn't
+      generate your evaluation right now.
+    </p>
+
+    <button
+      onClick={finishInterview}
+      disabled={isEvaluating || isOffline}
+      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isEvaluating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Generating Evaluation...
+        </>
+      ) : (
+        "Retry Evaluation"
+      )}
+    </button>
+
+    {isOffline && (
+      <p className="mt-3 text-xs text-red-300">
+        Internet connection lost. Reconnect and try again.
+      </p>
+    )}
+  </div>
+)}
+
+{/* Evaluation Loading */}
+{isEvaluating && (
+  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+    <p className="mt-3 font-medium text-white">
+      Generating your evaluation...
+    </p>
+
+    <p className="mt-1 text-sm text-[#9aa1b4]">
+      Please wait while AI analyzes your interview.
+    </p>
+  </div>
+)}
+
+{/* Evaluation Error / Retry */}
+{evaluationError && !evaluation && !isComplete && (
+  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+      <AlertCircle className="h-6 w-6 text-red-400" />
+    </div>
+
+    <h3 className="text-lg font-semibold text-white">
+      Evaluation Failed
+    </h3>
+
+    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+      Your interview answers are safely saved, but we couldn't
+      generate your evaluation right now.
+    </p>
+
+    <button
+      onClick={finishInterview}
+      disabled={isEvaluating || isOffline}
+      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isEvaluating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Generating Evaluation...
+        </>
+      ) : (
+        "Retry Evaluation"
+      )}
+    </button>
+
+    {isOffline && (
+      <p className="mt-3 text-xs text-red-300">
+        Internet connection lost. Reconnect and try again.
+      </p>
+    )}
+  </div>
+)}
+
+{/* Evaluation Loading */}
+{isEvaluating && (
+  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+    <p className="mt-3 font-medium text-white">
+      Generating your evaluation...
+    </p>
+
+    <p className="mt-1 text-sm text-[#9aa1b4]">
+      Please wait while AI analyzes your interview.
+    </p>
+  </div>
+)}
+
+{/* Existing Evaluation */}
+{evaluation && (
+  <div className="mt-8 text-left">
+
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+      <p className="text-sm text-[#9aa1b4]">
+        Overall Score
+      </p>
+
+      <p className="mt-2 text-5xl font-bold text-white">
+        {evaluation.overallScore}
+        <span className="text-2xl text-[#9aa1b4]">
+          /10
+        </span>
+      </p>
+    </div>
+
+    {evaluation.feedbackSummary && (
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+        <h3 className="font-semibold text-white">
+          Feedback
+        </h3>
+
+        <p className="mt-2 text-sm leading-6 text-[#b8becd]">
+          {evaluation.feedbackSummary}
+        </p>
+      </div>
+    )}
+
+    {Array.isArray(evaluation.skillsAssessment) &&
+      evaluation.skillsAssessment.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+          <h3 className="font-semibold text-white">
+            Skills Assessment
+          </h3>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            {evaluation.skillsAssessment.map((skill, index) => (
+              <span
+                key={index}
+                className="rounded-full border border-[#6366f1]/30 bg-[#6366f1]/10 px-3 py-1.5 text-xs text-[#d7d9e3]"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+  </div>
+)}
         </div>
       </div>
     );
@@ -1391,7 +1606,7 @@ export default function StartInterview() {
 
       {/* =====================================================
           OFFLINE BANNER
-      ===================================================== */}
+          ===================================================== */}
 
       {isOffline && (
         <div className="mx-6 mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-300">
@@ -1402,11 +1617,8 @@ export default function StartInterview() {
 
       {/* =====================================================
           ERROR
-      ===================================================== */}
+          ===================================================== */}
 
-      {/* =====================================================
-    ERROR
-===================================================== */}
       {errorMsg && (
         <div className="mx-6 mt-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
           <span>{errorMsg}</span>
