@@ -45,6 +45,7 @@ export default function StartInterview() {
   const [errorMsg, setErrorMsg] = useState(null);
   const [evaluation, setEvaluation] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [hasFailedAnswer, setHasFailedAnswer] = useState(false);
 
   // =========================================================
   // REFS
@@ -63,7 +64,7 @@ export default function StartInterview() {
   const interviewStartedRef = useRef(false);
   const hasWelcomedRef = useRef(false);
   const isUnmountingRef = useRef(false);
-
+  const failedAnswerRef = useRef(null);
   // Prevent recovery API from running multiple times
   const recoveryStartedRef = useRef(false);
   // Prevent online event from triggering multiple recoveries
@@ -488,7 +489,7 @@ export default function StartInterview() {
       setIsOffline(true);
 
       setErrorMsg(
-        "Internet connection lost. Your interview session is محفوظ ہے. Please reconnect.",
+        "Internet connection lost. Your answer is saved locally. Reconnect and retry.",
       );
     };
 
@@ -1044,206 +1045,138 @@ export default function StartInterview() {
   // =========================================================
   // 16. SUBMIT ANSWER
   // =========================================================
-
-  // const submitAnswer = async (audioBlob) => {
-  //   if (isSubmittingRef.current) {
-  //     return;
-  //   }
-
-  //   if (!interviewID) {
-  //     setErrorMsg("Interview session missing. Please recover the interview.");
-
-  //     return;
-  //   }
-
-  //   if (isOffline) {
-  //     setErrorMsg(
-  //       "Internet connection lost. Answer submit nahi ho sakta. Please reconnect and retry.",
-  //     );
-
-  //     return;
-  //   }
-
-  //   isSubmittingRef.current = true;
-
-  //   setIsSubmitting(true);
-
-  //   setErrorMsg(null);
-
-  //   try {
-  //     const formData = new FormData();
-
-  //     formData.append("interviewId", interviewID);
-
-  //     formData.append("questionIndex", String(currentQuestionIdx));
-
-  //     const extension = audioBlob.type.includes("mp4")
-  //       ? "mp4"
-  //       : audioBlob.type.includes("webm")
-  //         ? "webm"
-  //         : "wav";
-
-  //     formData.append(
-  //       "audio",
-  //       audioBlob,
-  //       `answer-${currentQuestionIdx + 1}.${extension}`,
-  //     );
-
-  //     console.log("📤 Submitting answer:", {
-  //       interviewId: interviewID,
-  //       questionIndex: currentQuestionIdx,
-  //       audioSize: audioBlob.size,
-  //     });
-
-  //     const response = await API.post("/interview/submitAnswer", formData);
-
-  //     console.log("✅ Answer submitted:", response.data);
-
-  //     const isLastQuestion = currentQuestionIdx + 1 >= questions.length;
-
-  //     if (isLastQuestion) {
-  //       await finishInterview();
-  //     } else {
-  //       setCurrentQuestionIdx((prev) => prev + 1);
-  //     }
-  //   } catch (error) {
-  //     console.error("❌ Submit Answer Error:", error);
-
-  //     console.log("STATUS:", error.response?.status);
-
-  //     console.log("BACKEND RESPONSE:", error.response?.data);
-
-  //     setErrorMsg(
-  //       error.response?.data?.message ||
-  //         "Answer submit nahi ho paya. Please retry.",
-  //     );
-  //   } finally {
-  //     isSubmittingRef.current = false;
-
-  //     setIsSubmitting(false);
-  //   }
-  // };
-const submitAnswer = async (audioBlob, retryData = null) => {
-  if (isSubmittingRef.current) {
-    return;
-  }
-
-  const answerData = retryData || {
-    audioBlob,
-    questionIndex: currentQuestionIdx,
-    interviewId: interviewID,
-  };
-
-  const {
-    audioBlob: pendingAudio,
-    questionIndex,
-    interviewId,
-  } = answerData;
-
-  // ---------------------------------------------
-  // 1. Basic validation
-  // ---------------------------------------------
-  if (!interviewId) {
-    setErrorMsg(
-      "Interview session missing. Please recover the interview."
-    );
-    return;
-  }
-
-  if (!pendingAudio) {
-    setErrorMsg("Answer audio missing. Please record your answer again.");
-    return;
-  }
-
-  // ---------------------------------------------
-  // 2. Offline protection
-  // IMPORTANT: preserve audio before returning
-  // ---------------------------------------------
-  if (isOffline) {
-    failedAnswerRef.current = answerData;
-
-    setErrorMsg(
-      "Internet connection lost. Your answer is محفوظ ہے. Reconnect and retry."
-    );
-    return;
-  }
-
-  isSubmittingRef.current = true;
-  setIsSubmitting(true);
-  setErrorMsg(null);
-
-  try {
-    const formData = new FormData();
-
-    formData.append("interviewId", interviewId);
-    formData.append("questionIndex", String(questionIndex));
-
-    const extension = pendingAudio.type.includes("mp4")
-      ? "mp4"
-      : pendingAudio.type.includes("webm")
-        ? "webm"
-        : "wav";
-
-    formData.append(
-      "audio",
-      pendingAudio,
-      `answer-${questionIndex + 1}.${extension}`
-    );
-
-    console.log("📤 Submitting answer:", {
-      interviewId,
-      questionIndex,
-      audioSize: pendingAudio.size,
-      isRetry: Boolean(retryData),
-    });
-
-    const response = await API.post(
-      "/interview/submitAnswer",
-      formData
-    );
-
-    console.log("✅ Answer submitted:", response.data);
-
-    // ---------------------------------------------
-    // SUCCESS
-    // Clear failed answer only after successful save
-    // ---------------------------------------------
-    failedAnswerRef.current = null;
-
-    const isLastQuestion =
-      questionIndex + 1 >= questions.length;
-
-    if (isLastQuestion) {
-      await finishInterview();
-    } else {
-      setCurrentQuestionIdx((prev) => prev + 1);
+  const submitAnswer = async (audioBlob, retryData = null) => {
+    if (isSubmittingRef.current) {
+      return;
     }
 
-  } catch (error) {
-    console.error("❌ Submit Answer Error:", error);
-
-    console.log("STATUS:", error.response?.status);
-    console.log("BACKEND RESPONSE:", error.response?.data);
-
-    // ---------------------------------------------
-    // PRESERVE FAILED ANSWER
-    // ---------------------------------------------
-    failedAnswerRef.current = {
-      audioBlob: pendingAudio,
-      questionIndex,
-      interviewId,
+    const answerData = retryData || {
+      audioBlob,
+      questionIndex: currentQuestionIdx,
+      interviewId: interviewID,
     };
 
-    setErrorMsg(
-      error.response?.data?.message ||
-        "Answer submit nahi ho paya. Please retry."
-    );
+    const { audioBlob: pendingAudio, questionIndex, interviewId } = answerData;
+    // ---------------------------------------------
+    // 1. Basic validation
+    // ---------------------------------------------
+    if (!interviewId) {
+      setErrorMsg("Interview session missing. Please recover the interview.");
+      return;
+    }
 
-  } finally {
-    isSubmittingRef.current = false;
-    setIsSubmitting(false);
-  }
-};
+    if (!pendingAudio) {
+      setErrorMsg("Answer audio missing. Please record your answer again.");
+      return;
+    }
+
+    // ---------------------------------------------
+    // 2. Offline protection
+    // ---------------------------------------------
+    if (isOffline) {
+      // IMPORTANT: preserve audio
+      failedAnswerRef.current = answerData;
+
+      setErrorMsg(
+        "Internet connection lost. Your answer is محفوظ ہے. Reconnect and retry.",
+      );
+
+      return;
+    }
+
+    isSubmittingRef.current = true;
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      const formData = new FormData();
+
+      formData.append("interviewId", interviewId);
+      formData.append("questionIndex", String(questionIndex));
+
+      const extension = pendingAudio.type.includes("mp4")
+        ? "mp4"
+        : pendingAudio.type.includes("webm")
+          ? "webm"
+          : "wav";
+
+      formData.append(
+        "audio",
+        pendingAudio,
+        `answer-${questionIndex + 1}.${extension}`,
+      );
+
+      console.log("📤 Submitting answer:", {
+        interviewId,
+        questionIndex,
+        audioSize: pendingAudio.size,
+        isRetry: Boolean(retryData),
+      });
+
+      const response = await API.post("/interview/submitAnswer", formData);
+
+      console.log("✅ Answer submitted:", response.data);
+
+      // ---------------------------------------------
+      // SUCCESS
+      // ---------------------------------------------
+      failedAnswerRef.current = null;
+
+      const isLastQuestion = questionIndex + 1 >= questions.length;
+
+      if (isLastQuestion) {
+        await finishInterview();
+      } else {
+        setCurrentQuestionIdx((prev) => prev + 1);
+      }
+    } catch (error) {
+      console.error("❌ Submit Answer Error:", error);
+
+      console.log("STATUS:", error.response?.status);
+      console.log("BACKEND RESPONSE:", error.response?.data);
+
+      // ---------------------------------------------
+      // PRESERVE FAILED ANSWER
+      // ---------------------------------------------
+      failedAnswerRef.current = {
+        audioBlob: pendingAudio,
+        questionIndex,
+        interviewId,
+      };
+
+      setErrorMsg(
+        error.response?.data?.message ||
+          "Answer submit nahi ho paya. Please retry.",
+      );
+    } finally {
+      isSubmittingRef.current = false;
+      setIsSubmitting(false);
+    }
+  };
+  // =========================================================
+  // 17. RETRY FAILED ANSWER
+  // =========================================================
+  const retryFailedAnswer = async () => {
+    const failedAnswer = failedAnswerRef.current;
+
+    if (!failedAnswer) {
+      setErrorMsg("No failed answer available to retry.");
+      return;
+    }
+
+    if (isOffline) {
+      setErrorMsg("Internet connection lost. Please reconnect and retry.");
+      return;
+    }
+
+    console.log("🔄 Retrying failed answer:", {
+      questionIndex: failedAnswer.questionIndex,
+      interviewId: failedAnswer.interviewId,
+    });
+
+    await submitAnswer(null, failedAnswer);
+  };
+
   // =========================================================
   // 17. END INTERVIEW
   // =========================================================
@@ -1471,35 +1404,61 @@ const submitAnswer = async (audioBlob, retryData = null) => {
           ERROR
       ===================================================== */}
 
+      {/* =====================================================
+    ERROR
+===================================================== */}
       {errorMsg && (
         <div className="mx-6 mt-4 flex items-center justify-between rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
           <span>{errorMsg}</span>
 
-          {!isSpeaking &&
-            !isRecording &&
-            !isSubmitting &&
-            questions.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  const question = questions[currentQuestionIdx];
-                  const questionText =
-                    typeof question === "string"
-                      ? question
-                      : question?.questionText || "";
+          <div className="ml-3 flex items-center gap-2">
+            {/* =================================================
+          RETRY FAILED ANSWER
+      ================================================= */}
+            {hasFailedAnswer &&
+              !isSpeaking &&
+              !isRecording &&
+              !isSubmitting && (
+                <button
+                  type="button"
+                  onClick={retryFailedAnswer}
+                  disabled={isOffline}
+                  className="rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Retry Answer
+                </button>
+              )}
 
-                  if (questionText) {
-                    speakQuestion(questionText);
-                  }
-                }}
-                className="ml-3 rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30"
-              >
-                Retry
-              </button>
-            )}
+            {/* =================================================
+          RETRY AI QUESTION / TTS
+      ================================================= */}
+            {!hasFailedAnswer &&
+              !isSpeaking &&
+              !isRecording &&
+              !isSubmitting &&
+              questions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const question = questions[currentQuestionIdx];
+
+                    const questionText =
+                      typeof question === "string"
+                        ? question
+                        : question?.questionText || "";
+
+                    if (questionText) {
+                      speakQuestion(questionText);
+                    }
+                  }}
+                  className="rounded-md bg-red-500/20 px-3 py-1 font-semibold hover:bg-red-500/30"
+                >
+                  Retry
+                </button>
+              )}
+          </div>
         </div>
       )}
-
       {/* =====================================================
           LOADING / RECOVERY
       ===================================================== */}
