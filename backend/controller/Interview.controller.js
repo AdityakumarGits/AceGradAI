@@ -1,13 +1,14 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
-
+import crypto from "crypto";
 import {
   generateInterviewQuestions,
   evaluateInterviewSession,
   generateResumeInterviewQuestions,
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
+import jwt from "jsonwebtoken";
 
 
 import { PDFParse } from "pdf-parse";
@@ -258,9 +259,7 @@ export const startInterview = async (req, res, next) => {
     let generatedOtp = null;
 
     if (finalInterviewType === "campaign") {
-      generatedOtp = Math.floor(
-        100000 + Math.random() * 900000
-      ).toString();
+      generatedOtp = crypto.randomInt(100000, 1000000).toString();
     }
 
     // --------------------------------------------------
@@ -347,14 +346,17 @@ export const verifyInterviewOtp = async (
       otp,
     } = req.body;
 
-    if (!interviewId || !otp) {
-      return res.status(400).json({
-        status: "fail",
-        message:
-          "Interview ID and 6-digit OTP are required",
-      });
-    }
-
+  if (
+  !interviewId ||
+  !/^\d{6}$/.test(otp.toString())
+) {
+  return res.status(400).json({
+    status: "fail",
+    message:
+      "Interview ID and valid 6-digit OTP are required",
+  });
+}
+  
     const interview =
       await Interview.findOne({
         _id: interviewId,
@@ -367,6 +369,14 @@ export const verifyInterviewOtp = async (
           "Invalid or expired interview link",
       });
     }
+    if (interview.interviewType !== "campaign") {
+  return next(
+    new AppError(
+      "This is not a campaign interview",
+      403
+    )
+  );
+}
 
     if (
       interview.accessOtp !==
@@ -391,20 +401,31 @@ export const verifyInterviewOtp = async (
       interview.status = "active";
       await interview.save();
     }
+ const campaignToken = jwt.sign(
+  {
+    interviewId: interview._id.toString(),
+    purpose: "campaign-interview",
+  },
+  process.env.JWT_SECRET,
+  {
+    expiresIn: "1h",
+    issuer: "acegrad-ai",
+    audience: "campaign-interview",
+  }
+);
 
-    return res.status(200).json({
-      status: "success",
-      message:
-        "Access granted successfully",
+   return res.status(200).json({
+  status: "success",
+  message: "Access granted successfully",
 
-      data: {
-        interviewId: interview._id,
-        jobTitle: interview.jobTitle,
-        candidateName:
-          interview.candidateName,
-        hasAccessPassed: true,
-      },
-    });
+  data: {
+    interviewId: interview._id,
+    jobTitle: interview.jobTitle,
+    candidateName: interview.candidateName,
+    hasAccessPassed: true,
+    accessToken: campaignToken,
+  },
+});
 
   } catch (error) {
     return next(error);
@@ -565,24 +586,75 @@ export const submitGuestAnswer = async (
   res,
   next
 ) => {
-  try {
-    const {
-      interviewId,
-      questionIndex,
-      userAnswer,
-    } = req.body;
+  const authHeader = req.headers.authorization;
 
-    if (
-      !interviewId ||
-      questionIndex === undefined ||
-      !userAnswer?.trim()
-    ) {
-      return res.status(400).json({
-        status: "fail",
-        message:
-          "Missing required fields",
-      });
-    }
+if (!authHeader?.startsWith("Bearer ")) {
+  return next(
+    new AppError(
+      "Campaign access token is required",
+      401
+    )
+  );
+}
+
+const token = authHeader.split(" ")[1];
+
+let decoded;
+
+try {
+  decoded = jwt.verify(
+  token,
+  process.env.JWT_SECRET,
+  {
+    issuer: "acegrad-ai",
+    audience: "campaign-interview",
+  }
+);
+} catch (error) {
+  return next(
+    new AppError(
+      "Invalid or expired campaign access token",
+      401
+    )
+  );
+}
+if (decoded.purpose !== "campaign-interview") {
+  return next(
+    new AppError(
+      "Invalid campaign access token",
+      401
+    )
+  );
+}
+try{
+  const {
+  interviewId,
+  questionIndex,
+  userAnswer,
+} = req.body;
+
+if (
+  !interviewId ||
+  questionIndex === undefined ||
+  !userAnswer?.trim()
+) {
+  return res.status(400).json({
+    status: "fail",
+    message: "Missing required fields",
+  });
+}
+
+if (
+  decoded.interviewId !== interviewId.toString()
+) {
+  return next(
+    new AppError(
+      "Invalid interview access",
+      403
+    )
+  );
+}
+
 
     const interview =
       await Interview.findOne({
@@ -596,7 +668,14 @@ export const submitGuestAnswer = async (
           "Session not found",
       });
     }
-
+if (interview.interviewType !== "campaign") {
+  return next(
+    new AppError(
+      "This endpoint is only available for campaign interviews",
+      403
+    )
+  );
+}
     if (interview.status === "completed") {
       return res.status(400).json({
         status: "fail",

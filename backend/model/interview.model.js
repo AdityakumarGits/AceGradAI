@@ -221,6 +221,10 @@ evaluation: {
     },
   ],
 },
+isProcessingAnswer: {
+  type: Boolean,
+  default: false,
+},
 
     // --------------------------------------------------
     // 11. Interview Status
