@@ -613,22 +613,42 @@ export const submitGuestAnswer = async (
       });
     }
 
-    const parsedQuestionIndex =
-      Number(questionIndex);
+    const parsedQuestionIndex = Number(questionIndex);
 
-    const questionText =
-      interview.questions[
-        parsedQuestionIndex
-      ];
+if (
+  !Number.isInteger(parsedQuestionIndex) ||
+  parsedQuestionIndex < 0
+) {
+  return next(
+    new AppError(
+      "Invalid question index provided",
+      400
+    )
+  );
+}
 
-    if (!questionText) {
-      return next(
-        new AppError(
-          "Invalid question index provided",
-          400
-        )
-      );
-    }
+const expectedQuestionIndex = interview.answers.length;
+
+if (parsedQuestionIndex !== expectedQuestionIndex) {
+  return next(
+    new AppError(
+      `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
+      400
+    )
+  );
+}
+
+const questionText = interview.questions[parsedQuestionIndex];
+
+if (!questionText) {
+  return next(
+    new AppError(
+      "Invalid question index provided",
+      400
+    )
+  );
+}
+   
 
     const alreadyAnswered =
       interview.answers.some(
@@ -791,7 +811,16 @@ export const submitAnswer = async (
         )
       );
     }
+const expectedQuestionIndex = interview.answers.length;
 
+if (parsedQuestionIndex !== expectedQuestionIndex) {
+  return next(
+    new AppError(
+      `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
+      400
+    )
+  );
+}
     // --------------------------------------------------
     // 5. Duplicate Answer Check
     // --------------------------------------------------
@@ -981,6 +1010,9 @@ export const endInterview = async (
         )
       );
     }
+
+
+
 
     // --------------------------------------------------
     // 3. Completed Check

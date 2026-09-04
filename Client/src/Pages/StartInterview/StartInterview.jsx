@@ -5,7 +5,10 @@ import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
-
+import {
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import API from "../../services/api";
 
 const WELCOME_TEXT =
