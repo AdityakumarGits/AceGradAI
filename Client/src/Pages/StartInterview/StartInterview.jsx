@@ -1045,85 +1045,205 @@ export default function StartInterview() {
   // 16. SUBMIT ANSWER
   // =========================================================
 
-  const submitAnswer = async (audioBlob) => {
-    if (isSubmittingRef.current) {
-      return;
-    }
+  // const submitAnswer = async (audioBlob) => {
+  //   if (isSubmittingRef.current) {
+  //     return;
+  //   }
 
-    if (!interviewID) {
-      setErrorMsg("Interview session missing. Please recover the interview.");
+  //   if (!interviewID) {
+  //     setErrorMsg("Interview session missing. Please recover the interview.");
 
-      return;
-    }
+  //     return;
+  //   }
 
-    if (isOffline) {
-      setErrorMsg(
-        "Internet connection lost. Answer submit nahi ho sakta. Please reconnect and retry.",
-      );
+  //   if (isOffline) {
+  //     setErrorMsg(
+  //       "Internet connection lost. Answer submit nahi ho sakta. Please reconnect and retry.",
+  //     );
 
-      return;
-    }
+  //     return;
+  //   }
 
-    isSubmittingRef.current = true;
+  //   isSubmittingRef.current = true;
 
-    setIsSubmitting(true);
+  //   setIsSubmitting(true);
 
-    setErrorMsg(null);
+  //   setErrorMsg(null);
 
-    try {
-      const formData = new FormData();
+  //   try {
+  //     const formData = new FormData();
 
-      formData.append("interviewId", interviewID);
+  //     formData.append("interviewId", interviewID);
 
-      formData.append("questionIndex", String(currentQuestionIdx));
+  //     formData.append("questionIndex", String(currentQuestionIdx));
 
-      const extension = audioBlob.type.includes("mp4")
-        ? "mp4"
-        : audioBlob.type.includes("webm")
-          ? "webm"
-          : "wav";
+  //     const extension = audioBlob.type.includes("mp4")
+  //       ? "mp4"
+  //       : audioBlob.type.includes("webm")
+  //         ? "webm"
+  //         : "wav";
 
-      formData.append(
-        "audio",
-        audioBlob,
-        `answer-${currentQuestionIdx + 1}.${extension}`,
-      );
+  //     formData.append(
+  //       "audio",
+  //       audioBlob,
+  //       `answer-${currentQuestionIdx + 1}.${extension}`,
+  //     );
 
-      console.log("📤 Submitting answer:", {
-        interviewId: interviewID,
-        questionIndex: currentQuestionIdx,
-        audioSize: audioBlob.size,
-      });
+  //     console.log("📤 Submitting answer:", {
+  //       interviewId: interviewID,
+  //       questionIndex: currentQuestionIdx,
+  //       audioSize: audioBlob.size,
+  //     });
 
-      const response = await API.post("/interview/submitAnswer", formData);
+  //     const response = await API.post("/interview/submitAnswer", formData);
 
-      console.log("✅ Answer submitted:", response.data);
+  //     console.log("✅ Answer submitted:", response.data);
 
-      const isLastQuestion = currentQuestionIdx + 1 >= questions.length;
+  //     const isLastQuestion = currentQuestionIdx + 1 >= questions.length;
 
-      if (isLastQuestion) {
-        await finishInterview();
-      } else {
-        setCurrentQuestionIdx((prev) => prev + 1);
-      }
-    } catch (error) {
-      console.error("❌ Submit Answer Error:", error);
+  //     if (isLastQuestion) {
+  //       await finishInterview();
+  //     } else {
+  //       setCurrentQuestionIdx((prev) => prev + 1);
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Submit Answer Error:", error);
 
-      console.log("STATUS:", error.response?.status);
+  //     console.log("STATUS:", error.response?.status);
 
-      console.log("BACKEND RESPONSE:", error.response?.data);
+  //     console.log("BACKEND RESPONSE:", error.response?.data);
 
-      setErrorMsg(
-        error.response?.data?.message ||
-          "Answer submit nahi ho paya. Please retry.",
-      );
-    } finally {
-      isSubmittingRef.current = false;
+  //     setErrorMsg(
+  //       error.response?.data?.message ||
+  //         "Answer submit nahi ho paya. Please retry.",
+  //     );
+  //   } finally {
+  //     isSubmittingRef.current = false;
 
-      setIsSubmitting(false);
-    }
+  //     setIsSubmitting(false);
+  //   }
+  // };
+const submitAnswer = async (audioBlob, retryData = null) => {
+  if (isSubmittingRef.current) {
+    return;
+  }
+
+  const answerData = retryData || {
+    audioBlob,
+    questionIndex: currentQuestionIdx,
+    interviewId: interviewID,
   };
 
+  const {
+    audioBlob: pendingAudio,
+    questionIndex,
+    interviewId,
+  } = answerData;
+
+  // ---------------------------------------------
+  // 1. Basic validation
+  // ---------------------------------------------
+  if (!interviewId) {
+    setErrorMsg(
+      "Interview session missing. Please recover the interview."
+    );
+    return;
+  }
+
+  if (!pendingAudio) {
+    setErrorMsg("Answer audio missing. Please record your answer again.");
+    return;
+  }
+
+  // ---------------------------------------------
+  // 2. Offline protection
+  // IMPORTANT: preserve audio before returning
+  // ---------------------------------------------
+  if (isOffline) {
+    failedAnswerRef.current = answerData;
+
+    setErrorMsg(
+      "Internet connection lost. Your answer is محفوظ ہے. Reconnect and retry."
+    );
+    return;
+  }
+
+  isSubmittingRef.current = true;
+  setIsSubmitting(true);
+  setErrorMsg(null);
+
+  try {
+    const formData = new FormData();
+
+    formData.append("interviewId", interviewId);
+    formData.append("questionIndex", String(questionIndex));
+
+    const extension = pendingAudio.type.includes("mp4")
+      ? "mp4"
+      : pendingAudio.type.includes("webm")
+        ? "webm"
+        : "wav";
+
+    formData.append(
+      "audio",
+      pendingAudio,
+      `answer-${questionIndex + 1}.${extension}`
+    );
+
+    console.log("📤 Submitting answer:", {
+      interviewId,
+      questionIndex,
+      audioSize: pendingAudio.size,
+      isRetry: Boolean(retryData),
+    });
+
+    const response = await API.post(
+      "/interview/submitAnswer",
+      formData
+    );
+
+    console.log("✅ Answer submitted:", response.data);
+
+    // ---------------------------------------------
+    // SUCCESS
+    // Clear failed answer only after successful save
+    // ---------------------------------------------
+    failedAnswerRef.current = null;
+
+    const isLastQuestion =
+      questionIndex + 1 >= questions.length;
+
+    if (isLastQuestion) {
+      await finishInterview();
+    } else {
+      setCurrentQuestionIdx((prev) => prev + 1);
+    }
+
+  } catch (error) {
+    console.error("❌ Submit Answer Error:", error);
+
+    console.log("STATUS:", error.response?.status);
+    console.log("BACKEND RESPONSE:", error.response?.data);
+
+    // ---------------------------------------------
+    // PRESERVE FAILED ANSWER
+    // ---------------------------------------------
+    failedAnswerRef.current = {
+      audioBlob: pendingAudio,
+      questionIndex,
+      interviewId,
+    };
+
+    setErrorMsg(
+      error.response?.data?.message ||
+        "Answer submit nahi ho paya. Please retry."
+    );
+
+  } finally {
+    isSubmittingRef.current = false;
+    setIsSubmitting(false);
+  }
+};
   // =========================================================
   // 17. END INTERVIEW
   // =========================================================

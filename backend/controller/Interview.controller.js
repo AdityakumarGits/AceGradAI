@@ -1,6 +1,5 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
-
 import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 
 import {
@@ -10,7 +9,7 @@ import {
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
 
-import axios from "axios";
+
 import { PDFParse } from "pdf-parse";
 import { DeepgramClient } from "@deepgram/sdk";
 
