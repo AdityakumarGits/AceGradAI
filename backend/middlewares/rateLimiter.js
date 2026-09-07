@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 /**
  * Common factory — har-limiter isi-se-banega, taaki config-consistent rahe.
@@ -11,7 +11,13 @@ const createLimiter = ({ windowMs, max, message }) =>
     max,
     standardHeaders: true, // RateLimit-* headers response me
     legacyHeaders: false,
-    keyGenerator: (req) => req.user?.id || req.ip,
+keyGenerator: (req) => {
+  if (req.user?.id) {
+    return req.user.id;
+  }
+
+  return ipKeyGenerator(req.ip);
+},
     message: {
       status: "fail",
       message: message || "Too many requests. Please try again later.",
