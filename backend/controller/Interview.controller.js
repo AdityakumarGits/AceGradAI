@@ -1,6 +1,5 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
-import * as sdk from "microsoft-cognitiveservices-speech-sdk";
 import crypto from "crypto";
 import {
   generateInterviewQuestions,
@@ -10,8 +9,8 @@ import {
 } from "../services/gemini.service.js";
 import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
-import deepgram from "../config/deepgram.config.js";
-
+import { transcribeAudio } from "../services/deepgram.service.js";
+import { synthesizeSpeech } from "../services/azureTts.service.js";
 
 
 
@@ -440,17 +439,10 @@ export const verifyInterviewOtp = async (
 // TEXT TO SPEECH - AZURE SPEECH
 // ==================================================
 
-export const textToSpeech = async (
-  req,
-  res,
-  next
-) => {
-  let speechSynthesizer = null;
-
+export const textToSpeech = async (req, res, next) => {
   try {
     const { text } = req.body;
 
-    // Validate text
     if (!text?.trim()) {
       return next(
         new AppError(
@@ -460,97 +452,10 @@ export const textToSpeech = async (
       );
     }
 
-    // Validate Azure configuration
-    const speechKey =
-      process.env.AZURE_SPEECH_KEY;
-
-    const speechRegion =
-      process.env.AZURE_SPEECH_REGION;
-
-    if (!speechKey) {
-      console.error(
-        "❌ AZURE_SPEECH_KEY is missing"
-      );
-
-      return next(
-        new AppError(
-          "Azure Speech API key is not configured",
-          500
-        )
-      );
-    }
-
-    if (!speechRegion) {
-      console.error(
-        "❌ AZURE_SPEECH_REGION is missing"
-      );
-
-      return next(
-        new AppError(
-          "Azure Speech region is not configured",
-          500
-        )
-      );
-    }
-
-    // Azure configuration
-    const speechConfig =
-      sdk.SpeechConfig.fromSubscription(
-        speechKey,
-        speechRegion
-      );
-
-    speechConfig.speechSynthesisLanguage =
-      "en-US";
-
-    speechConfig.speechSynthesisVoiceName =
-      "en-US-AvaMultilingualNeural";
-
-    speechConfig.speechSynthesisOutputFormat =
-      sdk.SpeechSynthesisOutputFormat
-        .Riff24Khz16BitMonoPcm;
-
-    speechSynthesizer =
-      new sdk.SpeechSynthesizer(
-        speechConfig,
-        null
-      );
-
-    // Generate speech
-    const result = await new Promise(
-      (resolve, reject) => {
-        speechSynthesizer.speakTextAsync(
-          text.trim(),
-          (speechResult) =>
-            resolve(speechResult),
-          (error) =>
-            reject(error)
-        );
-      }
-    );
-
-    if (
-      result.reason !==
-      sdk.ResultReason.SynthesizingAudioCompleted
-    ) {
-      console.error(
-        "❌ Azure Speech synthesis failed:",
-        result.errorDetails
-      );
-
-      return next(
-        new AppError(
-          result.errorDetails ||
-            "Azure Speech synthesis failed",
-          500
-        )
-      );
-    }
+    const audioData = await synthesizeSpeech(text);
 
     const audioBase64 =
-      Buffer.from(
-        result.audioData
-      ).toString("base64");
+      Buffer.from(audioData).toString("base64");
 
     return res.status(200).json({
       status: "success",
@@ -559,12 +464,8 @@ export const textToSpeech = async (
         contentType: "audio/wav",
       },
     });
-
   } catch (error) {
-    console.error(
-      "❌ Azure TTS Error:",
-      error
-    );
+    console.error("❌ Azure TTS Error:", error);
 
     return next(
       new AppError(
@@ -573,13 +474,9 @@ export const textToSpeech = async (
         500
       )
     );
-
-  } finally {
-    if (speechSynthesizer) {
-      speechSynthesizer.close();
-    }
   }
 };
+
 
 // ==================================================
 // SUBMIT GUEST ANSWER
@@ -964,39 +861,11 @@ if (parsedQuestionIndex !== expectedQuestionIndex) {
     // 7. Deepgram Speech-to-Text
     // --------------------------------------------------
 
-    const response =
-      await deepgram.listen.v1.media.transcribeFile(
-        req.file.buffer,
-        {
-          model: "nova-3",
-          smart_format: true,
-          language: "en-US",
-          encoding: "opus",
-          container: "webm",
-        }
-      );
+ const transcript = await transcribeAudio(req.file.buffer);
 
-    console.log(
-      "🔊 Deepgram Full Response:",
-      response
-    );
+    console.log(" Deepgram Transcript:",transcript );
 
-    const transcript =
-      response?.results
-        ?.channels?.[0]
-        ?.alternatives?.[0]
-        ?.transcript
-        ?.trim();
-
-    console.log(
-      "📝 Deepgram Transcript:",
-      transcript
-    );
-
-    // --------------------------------------------------
     // 8. Empty Transcript Protection
-    // --------------------------------------------------
-
     if (!transcript) {
       return next(
         new AppError(
