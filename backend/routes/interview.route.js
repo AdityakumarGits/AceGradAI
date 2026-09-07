@@ -1,14 +1,11 @@
 import express from "express";
-import multer from "multer";
+
 import { protect } from "../middlewares/protectedMiddleware.js";
 import {  startInterview,textToSpeech, submitAnswer,endInterview,  getAllInterviews, getInterviewDetails,getInterviewReport,}  from "../controller/interview.controller.js";
 import {verifyInterviewOtp,submitGuestAnswer,} from "../controller/interview.controller.js"; // Import new helpers
 import {startInterviewLimiter,submitAnswerLimiter,ttsLimiter,endInterviewLimiter, otpVerifyLimiter,} from "../middlewares/rateLimiter.js";
 import {resumeUpload, audioUpload} from "../middlewares/uploadMiddleware.js";
 const router = express.Router();
-// Memory-storage — files ko disk pe save nahi karte, seedha buffer me rakhte hain
-// (chhoti files — resume-PDF, answer-audio — turant process hoti hain, permanent storage ki zarurat nahi)
-const upload = multer({ storage: multer.memoryStorage() });
 
 // resume-mode me PDF file 'resume' field-name se aayegi
 router.post( "/startInterview",protect,startInterviewLimiter,resumeUpload.single("resume"),startInterview,);

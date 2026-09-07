@@ -9,18 +9,12 @@ import {
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
 import jwt from "jsonwebtoken";
-
-
 import { PDFParse } from "pdf-parse";
-import { DeepgramClient } from "@deepgram/sdk";
+import deepgram from "../config/deepgram.config.js";
 
-// --------------------------------------------------
-// Deepgram Client
-// --------------------------------------------------
 
-const deepgram = new DeepgramClient({
-  apiKey: process.env.DEEPGRAM_API_KEY,
-});
+
+
 
 // ==================================================
 // START INTERVIEW

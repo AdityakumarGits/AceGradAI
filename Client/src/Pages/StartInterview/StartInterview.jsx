@@ -887,7 +887,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   // =========================================================
 
   const getSupportedMimeType = () => {
-    const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"];
+    const types = ["audio/webm;codecs=opus", "audio/webm", ];
 
     return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
   };

@@ -5,12 +5,14 @@ const storage = multer.memoryStorage();
 // Resume upload
 export const resumeUpload = multer({
   storage,
+
   limits: {
     fileSize: 5 * 1024 * 1024, // 5 MB
   },
+
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== "application/pdf") {
-      return cb(new Error("Only PDF files are allowed for resume"));
+      return cb(new Error("Only PDF resume is allowed"));
     }
 
     cb(null, true);
@@ -20,12 +22,16 @@ export const resumeUpload = multer({
 // Interview audio upload
 export const audioUpload = multer({
   storage,
+
   limits: {
     fileSize: 10 * 1024 * 1024, // 10 MB
   },
+
   fileFilter: (req, file, cb) => {
-    if (file.mimetype !== "audio/webm") {
-      return cb(new Error("Only WebM audio files are allowed"));
+    const mime = file.mimetype?.split(";")[0];
+
+    if (mime !== "audio/webm") {
+      return cb(new Error("Only WebM audio is allowed"));
     }
 
     cb(null, true);
