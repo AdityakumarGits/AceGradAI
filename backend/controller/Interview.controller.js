@@ -265,7 +265,17 @@ export const startInterview = async (req, res, next) => {
     // --------------------------------------------------
     // 8. Create Interview
     // --------------------------------------------------
+// if (req.user.role === "candidate") {
+//   const user = await User.findById(req.user.id).select("freeInterviewsUsed");
 
+//   if (user.freeInterviewsUsed >= 3) {
+//     return res.status(403).json({
+//       success: false,
+//       message: "You have used all 3 free interviews. Please upgrade to continue.",
+//       code: "FREE_INTERVIEW_LIMIT_REACHED",
+//     });
+//   }
+// }
     const newInterview =
       await Interview.create({
         userId,

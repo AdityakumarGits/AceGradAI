@@ -28,6 +28,10 @@ const userSchema = new mongoose.Schema({
     Verified:{
         type:Boolean,
         default:false,
+    },
+    freeInterviewsUsed: {
+     type: Number,
+     default: 0,
     }
 }, { 
     timestamps: true // Fixed: Yeh automatic createdAt aur updatedAt fields handle karega
