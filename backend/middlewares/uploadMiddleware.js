@@ -1,0 +1,33 @@
+import multer from "multer";
+
+const storage = multer.memoryStorage();
+
+// Resume upload
+export const resumeUpload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5 MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "application/pdf") {
+      return cb(new Error("Only PDF files are allowed for resume"));
+    }
+
+    cb(null, true);
+  },
+});
+
+// Interview audio upload
+export const audioUpload = multer({
+  storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10 MB
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype !== "audio/webm") {
+      return cb(new Error("Only WebM audio files are allowed"));
+    }
+
+    cb(null, true);
+  },
+});

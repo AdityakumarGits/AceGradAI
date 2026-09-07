@@ -1,10 +1,5 @@
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
-/**
- * Common factory — har-limiter isi-se-banega, taaki config-consistent rahe.
- * keyGenerator: agar authenticated-user hai to uski ID se-limit, warna IP se
- * (public/guest-routes ke liye fallback).
- */
 const createLimiter = ({ windowMs, max, message }) =>
   rateLimit({
     windowMs,
