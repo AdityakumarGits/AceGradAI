@@ -587,14 +587,11 @@ export const submitAnswer = async (req, res, next) => {
     if (!Number.isInteger(parsedQuestionIndex) || parsedQuestionIndex < 0) {
       return next(new AppError("Invalid question index provided", 400));
     }
-
     const questionText = interview.questions[parsedQuestionIndex];
-
     if (!questionText) {
       return next(new AppError("Invalid question index provided", 400));
     }
     const expectedQuestionIndex = interview.answers.length;
-
     if (parsedQuestionIndex !== expectedQuestionIndex) {
       return next(
         new AppError(
@@ -626,11 +623,8 @@ export const submitAnswer = async (req, res, next) => {
     });
 
     console.log("🎤 Audio buffer size:", req.file.buffer.length);
-
     console.log("🎤 MIME:", req.file.mimetype);
-
     console.log("🎤 FILE SIZE:", req.file.size);
-
     console.log(
       "🎤 BUFFER HEADER:",
       req.file.buffer.subarray(0, 20).toString("hex"),
@@ -665,16 +659,11 @@ export const submitAnswer = async (req, res, next) => {
     });
 
     await interview.save();
-
     const nextQuestionIndex = parsedQuestionIndex + 1;
-
     if (nextQuestionIndex < interview.questions.length) {
       const nextQuestion = interview.questions[nextQuestionIndex];
-
       const nextQuestionAudio = await synthesizeSpeech(nextQuestion);
-
-      const nextQuestionAudioContent =
-        Buffer.from(nextQuestionAudio).toString("base64");
+      const nextQuestionAudioContent = Buffer.from(nextQuestionAudio).toString("base64");
 
       return res.status(200).json({
         status: "success",
@@ -691,9 +680,17 @@ export const submitAnswer = async (req, res, next) => {
         },
       });
     }
+    return res.status(200).json({
+  status: "success",
+  message: "Answer submitted successfully",
+  data: {
+    answersCount: interview.answers.length,
+    transcript,
+    nextQuestion: null,
+  },
+});
   } catch (error) {
     console.error("❌ Submit Answer Error:", error);
-
     return next(error);
   }
 };
@@ -794,7 +791,7 @@ export const endInterview = async (req, res, next) => {
     // 8. AI Evaluation
     // --------------------------------------------------
 
-    console.log("🤖 Starting AI interview evaluation...");
+    console.log(" Starting AI interview evaluation...");
 
     const aiEvaluationReport = await evaluateInterviewSession(qaPayload);
 
@@ -837,7 +834,6 @@ export const endInterview = async (req, res, next) => {
     // --------------------------------------------------
 
     interview.status = "completed";
-
     await interview.save();
 
     // --------------------------------------------------
