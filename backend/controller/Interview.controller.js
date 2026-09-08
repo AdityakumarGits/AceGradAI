@@ -1,5 +1,6 @@
 import Interview from "../model/interview.model.js";
 import AppError from "../utils/appError.js";
+import User from "../model/user.model.js";
 import crypto from "crypto";
 import {
   generateInterviewQuestions,
@@ -11,9 +12,6 @@ import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
 import { transcribeAudio } from "../services/deepgram.service.js";
 import { synthesizeSpeech } from "../services/azureTts.service.js";
-
-
-
 
 // ==================================================
 // START INTERVIEW
@@ -42,52 +40,32 @@ export const startInterview = async (req, res, next) => {
     // --------------------------------------------------
 
     if (!questionsSources) {
-      return next(
-        new AppError("Question source is required", 400)
-      );
+      return next(new AppError("Question source is required", 400));
     }
 
     if (!["jd", "topics", "resume"].includes(questionsSources)) {
       return next(
-        new AppError(
-          "Invalid question source. Use jd, topics, or resume",
-          400
-        )
+        new AppError("Invalid question source. Use jd, topics, or resume", 400),
       );
     }
 
     if (!experienceLevel) {
-      return next(
-        new AppError("Experience level is required", 400)
-      );
+      return next(new AppError("Experience level is required", 400));
     }
 
-    if (
-      !["fresher", "junior", "mid", "senior"].includes(
-        experienceLevel
-      )
-    ) {
-      return next(
-        new AppError(
-          "Invalid experience level",
-          400
-        )
-      );
+    if (!["fresher", "junior", "mid", "senior"].includes(experienceLevel)) {
+      return next(new AppError("Invalid experience level", 400));
     }
 
     // --------------------------------------------------
     // 2. Interview Type Validation
     // --------------------------------------------------
 
-    const finalInterviewType =
-      interviewType || "practice";
+    const finalInterviewType = interviewType || "practice";
 
     if (!["practice", "campaign"].includes(finalInterviewType)) {
       return next(
-        new AppError(
-          "Invalid interview type. Use practice or campaign",
-          400
-        )
+        new AppError("Invalid interview type. Use practice or campaign", 400),
       );
     }
 
@@ -97,8 +75,8 @@ export const startInterview = async (req, res, next) => {
         return next(
           new AppError(
             "Candidate name is required for campaign interview",
-            400
-          )
+            400,
+          ),
         );
       }
 
@@ -106,8 +84,8 @@ export const startInterview = async (req, res, next) => {
         return next(
           new AppError(
             "Candidate email is required for campaign interview",
-            400
-          )
+            400,
+          ),
         );
       }
     }
@@ -120,59 +98,43 @@ export const startInterview = async (req, res, next) => {
     if (questionsSources === "jd") {
       if (!jobTitle?.trim() || !jobDescription?.trim()) {
         return next(
-          new AppError(
-            "Job Title and Job Description are required",
-            400
-          )
+          new AppError("Job Title and Job Description are required", 400),
         );
       }
     }
 
     // Topics
     if (questionsSources === "topics") {
-      if (
-        !Array.isArray(topics) ||
-        topics.length === 0
-      ) {
-        return next(
-          new AppError(
-            "At least one topic is required",
-            400
-          )
-        );
+      if (!Array.isArray(topics) || topics.length === 0) {
+        return next(new AppError("At least one topic is required", 400));
       }
     }
 
     // Resume
     if (questionsSources === "resume") {
       if (!req.file) {
-        return next(
-          new AppError(
-            "Resume file is required",
-            400
-          )
-        );
+        return next(new AppError("Resume file is required", 400));
       }
 
       if (req.file.mimetype !== "application/pdf") {
-        return next(
-          new AppError(
-            "Only PDF resume is supported",
-            400
-          )
-        );
+        return next(new AppError("Only PDF resume is supported", 400));
       }
     }
 
-    // --------------------------------------------------
     // 4. Logged-in User
-    // --------------------------------------------------
-
+    // For Welcome MSG
+    // 4. Logged-in User
     const userId = req.user.id;
 
-    // --------------------------------------------------
+    let welcomeMessage = null;
+    if (finalInterviewType === "practice") {
+      const candidate = await User.findById(userId).select("fullname");
+      const candidateFirstName = candidate?.fullname?.split(" ")[0] || "there";
+      welcomeMessage =
+        `Hello ${candidateFirstName}, welcome to the interview. ` +
+        `I'm Isha, your AI interviewer. Let's begin.`;
+    }
     // 5. Generate AI Questions
-    // --------------------------------------------------
 
     let aiQuestions;
 
@@ -181,17 +143,16 @@ export const startInterview = async (req, res, next) => {
       aiQuestions = await generateInterviewQuestions(
         jobTitle.trim(),
         jobDescription.trim(),
-        experienceLevel
+        experienceLevel,
       );
     }
 
     // Topics
     else if (questionsSources === "topics") {
-      aiQuestions =
-        await generateTopicInterviewQuestions(
-          topics,
-          experienceLevel
-        );
+      aiQuestions = await generateTopicInterviewQuestions(
+        topics,
+        experienceLevel,
+      );
     }
 
     // Resume
@@ -205,23 +166,18 @@ export const startInterview = async (req, res, next) => {
 
         const result = await parser.getText();
 
-        const resumeText =
-          result?.text?.trim();
+        const resumeText = result?.text?.trim();
 
         if (!resumeText) {
           return next(
-            new AppError(
-              "Could not extract text from resume PDF",
-              400
-            )
+            new AppError("Could not extract text from resume PDF", 400),
           );
         }
 
-        aiQuestions =
-          await generateResumeInterviewQuestions(
-            resumeText,
-            experienceLevel
-          );
+        aiQuestions = await generateResumeInterviewQuestions(
+          resumeText,
+          experienceLevel,
+        );
       } finally {
         if (parser) {
           await parser.destroy();
@@ -233,15 +189,9 @@ export const startInterview = async (req, res, next) => {
     // 6. Validate Gemini Questions
     // --------------------------------------------------
 
-    if (
-      !Array.isArray(aiQuestions) ||
-      aiQuestions.length === 0
-    ) {
+    if (!Array.isArray(aiQuestions) || aiQuestions.length === 0) {
       return next(
-        new AppError(
-          "AI failed to generate interview questions",
-          500
-        )
+        new AppError("AI failed to generate interview questions", 500),
       );
     }
 
@@ -258,77 +208,82 @@ export const startInterview = async (req, res, next) => {
     // --------------------------------------------------
     // 8. Create Interview
     // --------------------------------------------------
-// if (req.user.role === "candidate") {
-//   const user = await User.findById(req.user.id).select("freeInterviewsUsed");
+    // if (req.user.role === "candidate") {
+    //   const user = await User.findById(req.user.id).select("freeInterviewsUsed");
 
-//   if (user.freeInterviewsUsed >= 3) {
-//     return res.status(403).json({
-//       success: false,
-//       message: "You have used all 3 free interviews. Please upgrade to continue.",
-//       code: "FREE_INTERVIEW_LIMIT_REACHED",
-//     });
-//   }
-// }
-    const newInterview =
-      await Interview.create({
-        userId,
-        questionsSources,
-        jobTitle:
-          questionsSources === "jd"
-            ? jobTitle.trim()
-            : undefined,
-
-        jobDescription:
-          questionsSources === "jd"
-            ? jobDescription.trim()
-            : undefined,
-
-        topics:
-          questionsSources === "topics"
-            ? topics
-            : [],
-
-        experienceLevel,
-
-        questions: aiQuestions,
-
-        interviewType: finalInterviewType,
-
-        candidateName:
-          finalInterviewType === "campaign"
-            ? candidateName.trim()
-            : undefined,
-
-        candidateEmail:
-          finalInterviewType === "campaign"
-            ? candidateEmail.trim().toLowerCase()
-            : undefined,
-
-        accessOtp: generatedOtp,
-
-       status: finalInterviewType === "campaign" ? "pending" : "active",
-      });
+    //   if (user.freeInterviewsUsed >= 3) {
+    //     return res.status(403).json({
+    //       success: false,
+    //       message: "You have used all 3 free interviews. Please upgrade to continue.",
+    //       code: "FREE_INTERVIEW_LIMIT_REACHED",
+    //     });
+    //   }
+    // }
+    const newInterview = await Interview.create({
+      userId,
+      questionsSources,
+      jobTitle: questionsSources === "jd" ? jobTitle.trim() : undefined,
+      jobDescription:
+        questionsSources === "jd" ? jobDescription.trim() : undefined,
+      topics: questionsSources === "topics" ? topics : [],
+      experienceLevel,
+      questions: aiQuestions,
+      interviewType: finalInterviewType,
+      candidateName:
+        finalInterviewType === "campaign" ? candidateName.trim() : undefined,
+      candidateEmail:
+        finalInterviewType === "campaign"
+          ? candidateEmail.trim().toLowerCase()
+          : undefined,
+      accessOtp: generatedOtp,
+      status: finalInterviewType === "campaign" ? "pending" : "active",
+    });
 
     // --------------------------------------------------
     // 9. Response
     // --------------------------------------------------
+    let welcomeAudioContent = null;
+    let firstQuestionAudioContent = null;
 
+    const firstQuestion = aiQuestions[0];
+
+    if (finalInterviewType === "practice") {
+      const [welcomeAudio, firstQuestionAudio] = await Promise.all([
+        synthesizeSpeech(welcomeMessage),
+        synthesizeSpeech(firstQuestion),
+      ]);
+
+      welcomeAudioContent = Buffer.from(welcomeAudio).toString("base64");
+      firstQuestionAudioContent =
+        Buffer.from(firstQuestionAudio).toString("base64");
+    }
     return res.status(201).json({
       status: "success",
-      message:
-        "Interview session created successfully",
+      message: "Interview session created successfully",
 
       data: {
         interview: newInterview,
         accessOtp: generatedOtp,
+
+        ...(finalInterviewType === "practice" && {
+          welcomeMessage,
+
+          welcomeAudio: {
+            audioContent: welcomeAudioContent,
+            contentType: "audio/wav",
+          },
+
+          firstQuestion: {
+            questionIndex: 0,
+            question: firstQuestion,
+            audioContent: firstQuestionAudioContent,
+            contentType: "audio/wav",
+          },
+        }),
       },
     });
-
   } catch (error) {
-    console.error(
-      "❌ Start Interview Error:",
-      error
-    );
+    console.error("❌ Start Interview Error:", error);
 
     return next(error);
   }
@@ -338,65 +293,42 @@ export const startInterview = async (req, res, next) => {
 // VERIFY CAMPAIGN OTP
 // ==================================================
 
-export const verifyInterviewOtp = async (
-  req,
-  res,
-  next
-) => {
+export const verifyInterviewOtp = async (req, res, next) => {
   try {
-    const {
-      interviewId,
-      otp,
-    } = req.body;
+    const { interviewId, otp } = req.body;
 
-  if (
-  !interviewId ||
-  !/^\d{6}$/.test(otp.toString())
-) {
-  return res.status(400).json({
-    status: "fail",
-    message:
-      "Interview ID and valid 6-digit OTP are required",
-  });
-}
-  
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
+    if (!interviewId || !/^\d{6}$/.test(otp.toString())) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Interview ID and valid 6-digit OTP are required",
       });
+    }
+
+    const interview = await Interview.findOne({
+      _id: interviewId,
+    });
 
     if (!interview) {
       return res.status(404).json({
         status: "fail",
-        message:
-          "Invalid or expired interview link",
+        message: "Invalid or expired interview link",
       });
     }
     if (interview.interviewType !== "campaign") {
-  return next(
-    new AppError(
-      "This is not a campaign interview",
-      403
-    )
-  );
-}
+      return next(new AppError("This is not a campaign interview", 403));
+    }
 
-    if (
-      interview.accessOtp !==
-      otp.toString()
-    ) {
+    if (interview.accessOtp !== otp.toString()) {
       return res.status(401).json({
         status: "fail",
-        message:
-          "Incorrect 6-digit access code",
+        message: "Incorrect 6-digit access code",
       });
     }
 
     if (interview.status === "completed") {
       return res.status(400).json({
         status: "fail",
-        message:
-          "This interview has already been completed",
+        message: "This interview has already been completed",
       });
     }
 
@@ -404,32 +336,31 @@ export const verifyInterviewOtp = async (
       interview.status = "active";
       await interview.save();
     }
- const campaignToken = jwt.sign(
-  {
-    interviewId: interview._id.toString(),
-    purpose: "campaign-interview",
-  },
-  process.env.JWT_SECRET,
-  {
-    expiresIn: "1h",
-    issuer: "acegrad-ai",
-    audience: "campaign-interview",
-  }
-);
+    const campaignToken = jwt.sign(
+      {
+        interviewId: interview._id.toString(),
+        purpose: "campaign-interview",
+      },
+      process.env.JWT_SECRET,
+      {
+        expiresIn: "1h",
+        issuer: "acegrad-ai",
+        audience: "campaign-interview",
+      },
+    );
 
-   return res.status(200).json({
-  status: "success",
-  message: "Access granted successfully",
+    return res.status(200).json({
+      status: "success",
+      message: "Access granted successfully",
 
-  data: {
-    interviewId: interview._id,
-    jobTitle: interview.jobTitle,
-    candidateName: interview.candidateName,
-    hasAccessPassed: true,
-    accessToken: campaignToken,
-  },
-});
-
+      data: {
+        interviewId: interview._id,
+        jobTitle: interview.jobTitle,
+        candidateName: interview.candidateName,
+        hasAccessPassed: true,
+        accessToken: campaignToken,
+      },
+    });
   } catch (error) {
     return next(error);
   }
@@ -444,18 +375,12 @@ export const textToSpeech = async (req, res, next) => {
     const { text } = req.body;
 
     if (!text?.trim()) {
-      return next(
-        new AppError(
-          "Text is required for speech generation",
-          400
-        )
-      );
+      return next(new AppError("Text is required for speech generation", 400));
     }
 
     const audioData = await synthesizeSpeech(text);
 
-    const audioBase64 =
-      Buffer.from(audioData).toString("base64");
+    const audioBase64 = Buffer.from(audioData).toString("base64");
 
     return res.status(200).json({
       status: "success",
@@ -469,206 +394,134 @@ export const textToSpeech = async (req, res, next) => {
 
     return next(
       new AppError(
-        error?.message ||
-          "Failed to generate speech using Azure Speech",
-        500
-      )
+        error?.message || "Failed to generate speech using Azure Speech",
+        500,
+      ),
     );
   }
 };
-
 
 // ==================================================
 // SUBMIT GUEST ANSWER
 // ==================================================
 
-export const submitGuestAnswer = async (
-  req,
-  res,
-  next
-) => {
+export const submitGuestAnswer = async (req, res, next) => {
   const authHeader = req.headers.authorization;
 
-if (!authHeader?.startsWith("Bearer ")) {
-  return next(
-    new AppError(
-      "Campaign access token is required",
-      401
-    )
-  );
-}
-
-const token = authHeader.split(" ")[1];
-
-let decoded;
-
-try {
-  decoded = jwt.verify(
-  token,
-  process.env.JWT_SECRET,
-  {
-    issuer: "acegrad-ai",
-    audience: "campaign-interview",
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next(new AppError("Campaign access token is required", 401));
   }
-);
-} catch (error) {
-  return next(
-    new AppError(
-      "Invalid or expired campaign access token",
-      401
-    )
-  );
-}
-if (decoded.purpose !== "campaign-interview") {
-  return next(
-    new AppError(
-      "Invalid campaign access token",
-      401
-    )
-  );
-}
-try{
-  const {
-  interviewId,
-  questionIndex,
-  userAnswer,
-} = req.body;
 
-if (
-  !interviewId ||
-  questionIndex === undefined ||
-  !userAnswer?.trim()
-) {
-  return res.status(400).json({
-    status: "fail",
-    message: "Missing required fields",
-  });
-}
+  const token = authHeader.split(" ")[1];
 
-if (
-  decoded.interviewId !== interviewId.toString()
-) {
-  return next(
-    new AppError(
-      "Invalid interview access",
-      403
-    )
-  );
-}
+  let decoded;
 
+  try {
+    decoded = jwt.verify(token, process.env.JWT_SECRET, {
+      issuer: "acegrad-ai",
+      audience: "campaign-interview",
+    });
+  } catch (error) {
+    return next(new AppError("Invalid or expired campaign access token", 401));
+  }
+  if (decoded.purpose !== "campaign-interview") {
+    return next(new AppError("Invalid campaign access token", 401));
+  }
+  try {
+    const { interviewId, questionIndex, userAnswer } = req.body;
 
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
+    if (!interviewId || questionIndex === undefined || !userAnswer?.trim()) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Missing required fields",
       });
+    }
+
+    if (decoded.interviewId !== interviewId.toString()) {
+      return next(new AppError("Invalid interview access", 403));
+    }
+
+    const interview = await Interview.findOne({
+      _id: interviewId,
+    });
 
     if (!interview) {
       return res.status(404).json({
         status: "fail",
-        message:
-          "Session not found",
+        message: "Session not found",
       });
     }
-if (interview.interviewType !== "campaign") {
-  return next(
-    new AppError(
-      "This endpoint is only available for campaign interviews",
-      403
-    )
-  );
-}
+    if (interview.interviewType !== "campaign") {
+      return next(
+        new AppError(
+          "This endpoint is only available for campaign interviews",
+          403,
+        ),
+      );
+    }
     if (interview.status === "completed") {
       return res.status(400).json({
         status: "fail",
-        message:
-          "This session is already closed and evaluated",
+        message: "This session is already closed and evaluated",
       });
     }
 
     if (interview.status !== "active") {
       return res.status(400).json({
         status: "fail",
-        message:
-          "Interview session is not active",
+        message: "Interview session is not active",
       });
     }
 
     const parsedQuestionIndex = Number(questionIndex);
 
-if (
-  !Number.isInteger(parsedQuestionIndex) ||
-  parsedQuestionIndex < 0
-) {
-  return next(
-    new AppError(
-      "Invalid question index provided",
-      400
-    )
-  );
-}
+    if (!Number.isInteger(parsedQuestionIndex) || parsedQuestionIndex < 0) {
+      return next(new AppError("Invalid question index provided", 400));
+    }
 
-const expectedQuestionIndex = interview.answers.length;
+    const expectedQuestionIndex = interview.answers.length;
 
-if (parsedQuestionIndex !== expectedQuestionIndex) {
-  return next(
-    new AppError(
-      `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
-      400
-    )
-  );
-}
-
-const questionText = interview.questions[parsedQuestionIndex];
-
-if (!questionText) {
-  return next(
-    new AppError(
-      "Invalid question index provided",
-      400
-    )
-  );
-}
-   
-
-    const alreadyAnswered =
-      interview.answers.some(
-        (answer) =>
-          answer.questionIndex ===
-          parsedQuestionIndex
-      );
-
-    if (alreadyAnswered) {
+    if (parsedQuestionIndex !== expectedQuestionIndex) {
       return next(
         new AppError(
-          "This question has already been answered",
-          400
-        )
+          `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
+          400,
+        ),
       );
     }
 
+    const questionText = interview.questions[parsedQuestionIndex];
+
+    if (!questionText) {
+      return next(new AppError("Invalid question index provided", 400));
+    }
+
+    const alreadyAnswered = interview.answers.some(
+      (answer) => answer.questionIndex === parsedQuestionIndex,
+    );
+
+    if (alreadyAnswered) {
+      return next(new AppError("This question has already been answered", 400));
+    }
+
     interview.answers.push({
-      questionIndex:
-        parsedQuestionIndex,
+      questionIndex: parsedQuestionIndex,
 
       questionText,
 
-      userAnswer:
-        userAnswer.trim(),
+      userAnswer: userAnswer.trim(),
     });
 
     await interview.save();
 
     return res.status(200).json({
       status: "success",
-      message:
-        "Guest answer submitted successfully",
+      message: "Guest answer submitted successfully",
 
       data: {
-        answersCount:
-          interview.answers.length,
+        answersCount: interview.answers.length,
       },
     });
-
   } catch (error) {
     return next(error);
   }
@@ -678,58 +531,36 @@ if (!questionText) {
 // SUBMIT ANSWER
 // ==================================================
 
-export const submitAnswer = async (
-  req,
-  res,
-  next
-) => {
+export const submitAnswer = async (req, res, next) => {
   try {
-    const {
-      interviewId,
-      questionIndex,
-    } = req.body;
+    const { interviewId, questionIndex } = req.body;
 
     // --------------------------------------------------
     // 1. Basic Validation
     // --------------------------------------------------
 
-    if (
-      !interviewId ||
-      questionIndex === undefined
-    ) {
+    if (!interviewId || questionIndex === undefined) {
       return next(
-        new AppError(
-          "Interview ID and Question Index are required",
-          400
-        )
+        new AppError("Interview ID and Question Index are required", 400),
       );
     }
 
     if (!req.file) {
-      return next(
-        new AppError(
-          "Audio answer file is required",
-          400
-        )
-      );
+      return next(new AppError("Audio answer file is required", 400));
     }
 
     // --------------------------------------------------
     // 2. Find Interview
     // --------------------------------------------------
 
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
-        userId: req.user.id,
-      });
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      userId: req.user.id,
+    });
 
     if (!interview) {
       return next(
-        new AppError(
-          "Invalid Interview Session or Unauthorized access",
-          404
-        )
+        new AppError("Invalid Interview Session or Unauthorized access", 404),
       );
     }
 
@@ -739,139 +570,87 @@ export const submitAnswer = async (
 
     if (interview.status === "completed") {
       return next(
-        new AppError(
-          "This interview session is already completed",
-          400
-        )
+        new AppError("This interview session is already completed", 400),
       );
     }
 
     if (interview.status !== "active") {
-      return next(
-        new AppError(
-          "Interview session is not active",
-          400
-        )
-      );
- 
-
-
- 
-}
+      return next(new AppError("Interview session is not active", 400));
+    }
 
     // --------------------------------------------------
     // 4. Question Validation
     // --------------------------------------------------
 
-    const parsedQuestionIndex =
-      Number(questionIndex);
+    const parsedQuestionIndex = Number(questionIndex);
 
-    if (
-      !Number.isInteger(parsedQuestionIndex) ||
-      parsedQuestionIndex < 0
-    ) {
-      return next(
-        new AppError(
-          "Invalid question index provided",
-          400
-        )
-      );
+    if (!Number.isInteger(parsedQuestionIndex) || parsedQuestionIndex < 0) {
+      return next(new AppError("Invalid question index provided", 400));
     }
 
-    const questionText =
-      interview.questions[
-        parsedQuestionIndex
-      ];
+    const questionText = interview.questions[parsedQuestionIndex];
 
     if (!questionText) {
+      return next(new AppError("Invalid question index provided", 400));
+    }
+    const expectedQuestionIndex = interview.answers.length;
+
+    if (parsedQuestionIndex !== expectedQuestionIndex) {
       return next(
         new AppError(
-          "Invalid question index provided",
-          400
-        )
+          `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
+          400,
+        ),
       );
     }
-const expectedQuestionIndex = interview.answers.length;
-
-if (parsedQuestionIndex !== expectedQuestionIndex) {
-  return next(
-    new AppError(
-      `Invalid question sequence. Expected question ${expectedQuestionIndex + 1}.`,
-      400
-    )
-  );
-}
     // --------------------------------------------------
     // 5. Duplicate Answer Check
     // --------------------------------------------------
 
-    const alreadyAnswered =
-      interview.answers.some(
-        (answer) =>
-          answer.questionIndex ===
-          parsedQuestionIndex
-      );
+    const alreadyAnswered = interview.answers.some(
+      (answer) => answer.questionIndex === parsedQuestionIndex,
+    );
 
     if (alreadyAnswered) {
-      return next(
-        new AppError(
-          "This question has already been answered",
-          400
-        )
-      );
+      return next(new AppError("This question has already been answered", 400));
     }
 
     // --------------------------------------------------
     // 6. Audio Debug Information
     // --------------------------------------------------
 
-    console.log(
-      "🎤 Audio received by backend:",
-      {
-        mimetype: req.file.mimetype,
-        size: req.file.size,
-        originalname:
-          req.file.originalname,
-      }
-    );
+    console.log("🎤 Audio received by backend:", {
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+      originalname: req.file.originalname,
+    });
 
-    console.log(
-      "🎤 Audio buffer size:",
-      req.file.buffer.length
-    );
+    console.log("🎤 Audio buffer size:", req.file.buffer.length);
 
-    console.log(
-      "🎤 MIME:",
-      req.file.mimetype
-    );
+    console.log("🎤 MIME:", req.file.mimetype);
 
-    console.log(
-      "🎤 FILE SIZE:",
-      req.file.size
-    );
+    console.log("🎤 FILE SIZE:", req.file.size);
 
     console.log(
       "🎤 BUFFER HEADER:",
-      req.file.buffer
-        .subarray(0, 20)
-        .toString("hex")
+      req.file.buffer.subarray(0, 20).toString("hex"),
     );
 
     // --------------------------------------------------
     // 7. Deepgram Speech-to-Text
     // --------------------------------------------------
 
- const transcript = await transcribeAudio(req.file.buffer);
+    const transcript = await transcribeAudio(req.file.buffer);
 
-    console.log(" Deepgram Transcript:",transcript );
+    console.log(" Deepgram Transcript:", transcript);
 
     // 8. Empty Transcript Protection
     if (!transcript) {
       return next(
         new AppError(
           "No speech detected in the audio. Please try answering again.",
-          400
-        )
+          400,
+        ),
       );
     }
 
@@ -880,39 +659,40 @@ if (parsedQuestionIndex !== expectedQuestionIndex) {
     // --------------------------------------------------
 
     interview.answers.push({
-      questionIndex:
-        parsedQuestionIndex,
-
+      questionIndex: parsedQuestionIndex,
       questionText,
-
-      userAnswer:
-        transcript,
+      userAnswer: transcript,
     });
 
     await interview.save();
 
-    // --------------------------------------------------
-    // 10. Response
-    // --------------------------------------------------
+    const nextQuestionIndex = parsedQuestionIndex + 1;
 
-    return res.status(200).json({
-      status: "success",
-      message:
-        "Answer submitted successfully",
+    if (nextQuestionIndex < interview.questions.length) {
+      const nextQuestion = interview.questions[nextQuestionIndex];
 
-      data: {
-        answersCount:
-          interview.answers.length,
+      const nextQuestionAudio = await synthesizeSpeech(nextQuestion);
 
-        transcript,
-      },
-    });
+      const nextQuestionAudioContent =
+        Buffer.from(nextQuestionAudio).toString("base64");
 
+      return res.status(200).json({
+        status: "success",
+        message: "Answer submitted successfully",
+        data: {
+          answersCount: interview.answers.length,
+          transcript,
+          nextQuestion: {
+            questionIndex: nextQuestionIndex,
+            question: nextQuestion,
+            audioContent: nextQuestionAudioContent,
+            contentType: "audio/wav",
+          },
+        },
+      });
+    }
   } catch (error) {
-    console.error(
-      "❌ Submit Answer Error:",
-      error
-    );
+    console.error("❌ Submit Answer Error:", error);
 
     return next(error);
   }
@@ -922,14 +702,9 @@ if (parsedQuestionIndex !== expectedQuestionIndex) {
 // END INTERVIEW
 // ==================================================
 
-export const endInterview = async (
-  req,
-  res,
-  next
-) => {
+export const endInterview = async (req, res, next) => {
   try {
-    const { interviewId } =
-      req.body;
+    const { interviewId } = req.body;
 
     // --------------------------------------------------
     // 1. Interview ID Validation
@@ -937,10 +712,7 @@ export const endInterview = async (
 
     if (!interviewId) {
       return next(
-        new AppError(
-          "Interview ID is required to process evaluation",
-          400
-        )
+        new AppError("Interview ID is required to process evaluation", 400),
       );
     }
 
@@ -948,36 +720,27 @@ export const endInterview = async (
     // 2. Find Interview
     // --------------------------------------------------
 
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
-        userId: req.user.id,
-      });
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      userId: req.user.id,
+    });
 
     if (!interview) {
       return next(
-        new AppError(
-          "No active session found with the provided ID",
-          404
-        )
+        new AppError("No active session found with the provided ID", 404),
       );
     }
-
-
-
 
     // --------------------------------------------------
     // 3. Completed Check
     // --------------------------------------------------
 
-    if (
-      interview.status === "completed"
-    ) {
+    if (interview.status === "completed") {
       return next(
         new AppError(
           "This interview session has already been evaluated and closed",
-          400
-        )
+          400,
+        ),
       );
     }
 
@@ -986,27 +749,19 @@ export const endInterview = async (
     // --------------------------------------------------
 
     if (interview.status !== "active") {
-      return next(
-        new AppError(
-          "Interview session is not active",
-          400
-        )
-      );
+      return next(new AppError("Interview session is not active", 400));
     }
 
     // --------------------------------------------------
     // 5. Answers Check
     // --------------------------------------------------
 
-    if (
-      !interview.answers ||
-      interview.answers.length === 0
-    ) {
+    if (!interview.answers || interview.answers.length === 0) {
       return next(
         new AppError(
           "Cannot evaluate an interview session with zero submissions",
-          400
-        )
+          400,
+        ),
       );
     }
 
@@ -1014,15 +769,12 @@ export const endInterview = async (
     // 6. Complete Interview Check
     // --------------------------------------------------
 
-    if (
-      interview.answers.length !==
-      interview.questions.length
-    ) {
+    if (interview.answers.length !== interview.questions.length) {
       return next(
         new AppError(
           `Interview is incomplete. Expected ${interview.questions.length} answers but received ${interview.answers.length}.`,
-          400
-        )
+          400,
+        ),
       );
     }
 
@@ -1030,83 +782,47 @@ export const endInterview = async (
     // 7. Prepare Q&A Payload
     // --------------------------------------------------
 
-    const qaPayload =
-      interview.answers.map(
-        (item) => ({
-          questionIndex:
-            item.questionIndex,
+    const qaPayload = interview.answers.map((item) => ({
+      questionIndex: item.questionIndex,
 
-          questionText:
-            item.questionText,
+      questionText: item.questionText,
 
-          userAnswer:
-            item.userAnswer,
-        })
-      );
+      userAnswer: item.userAnswer,
+    }));
 
     // --------------------------------------------------
     // 8. AI Evaluation
     // --------------------------------------------------
 
-    console.log(
-      "🤖 Starting AI interview evaluation..."
-    );
+    console.log("🤖 Starting AI interview evaluation...");
 
-    const aiEvaluationReport =
-      await evaluateInterviewSession(
-        qaPayload
-      );
+    const aiEvaluationReport = await evaluateInterviewSession(qaPayload);
 
     // --------------------------------------------------
     // 9. Validate AI Evaluation
     // --------------------------------------------------
 
     const validScore = (score) =>
-      typeof score === "number" &&
-      score >= 0 &&
-      score <= 10;
+      typeof score === "number" && score >= 0 && score <= 10;
 
     const isValidEvaluation =
       aiEvaluationReport &&
-      validScore(
-        aiEvaluationReport.overallScore
-      ) &&
-      validScore(
-        aiEvaluationReport.technicalScore
-      ) &&
-      validScore(
-        aiEvaluationReport.communicationScore
-      ) &&
-      validScore(
-        aiEvaluationReport.problemSolvingScore
-      ) &&
-      Array.isArray(
-        aiEvaluationReport.strengths
-      ) &&
-      Array.isArray(
-        aiEvaluationReport.weaknesses
-      ) &&
-      Array.isArray(
-        aiEvaluationReport.recommendedTopics
-      ) &&
-      Array.isArray(
-        aiEvaluationReport.questionWiseEvaluation
-      ) &&
-      aiEvaluationReport
-        .questionWiseEvaluation.length ===
+      validScore(aiEvaluationReport.overallScore) &&
+      validScore(aiEvaluationReport.technicalScore) &&
+      validScore(aiEvaluationReport.communicationScore) &&
+      validScore(aiEvaluationReport.problemSolvingScore) &&
+      Array.isArray(aiEvaluationReport.strengths) &&
+      Array.isArray(aiEvaluationReport.weaknesses) &&
+      Array.isArray(aiEvaluationReport.recommendedTopics) &&
+      Array.isArray(aiEvaluationReport.questionWiseEvaluation) &&
+      aiEvaluationReport.questionWiseEvaluation.length ===
         interview.questions.length;
 
     if (!isValidEvaluation) {
-      console.error(
-        "❌ Invalid AI Evaluation:",
-        aiEvaluationReport
-      );
+      console.error("❌ Invalid AI Evaluation:", aiEvaluationReport);
 
       return next(
-        new AppError(
-          "AI returned an invalid evaluation report",
-          500
-        )
+        new AppError("AI returned an invalid evaluation report", 500),
       );
     }
 
@@ -1114,15 +830,13 @@ export const endInterview = async (
     // 10. Save Evaluation
     // --------------------------------------------------
 
-    interview.evaluation =
-      aiEvaluationReport;
+    interview.evaluation = aiEvaluationReport;
 
     // --------------------------------------------------
     // 11. Close Interview
     // --------------------------------------------------
 
-    interview.status =
-      "completed";
+    interview.status = "completed";
 
     await interview.save();
 
@@ -1133,23 +847,16 @@ export const endInterview = async (
     return res.status(200).json({
       status: "success",
 
-      message:
-        "Interview evaluated successfully and session has been closed",
+      message: "Interview evaluated successfully and session has been closed",
 
       data: {
-        evaluation:
-          interview.evaluation,
+        evaluation: interview.evaluation,
 
-        status:
-          interview.status,
+        status: interview.status,
       },
     });
-
   } catch (error) {
-    console.error(
-      "❌ End Interview Error:",
-      error
-    );
+    console.error("❌ End Interview Error:", error);
 
     return next(error);
   }
@@ -1159,32 +866,25 @@ export const endInterview = async (
 // GET ALL INTERVIEWS
 // ==================================================
 
-export const getAllInterviews = async (
-  req,
-  res,
-  next
-) => {
+export const getAllInterviews = async (req, res, next) => {
   try {
     let query = {
       userId: req.user.id,
     };
 
     if (req.user.role === "recruiter") {
-      query.interviewType =
-        "campaign";
+      query.interviewType = "campaign";
     } else {
-      query.interviewType =
-        "practice";
+      query.interviewType = "practice";
     }
 
-    const interviews =
-      await Interview.find(query)
-        .select(
-          "questionsSources jobTitle experienceLevel status evaluation.overallScore candidateName candidateEmail createdAt"
-        )
-        .sort({
-          createdAt: -1,
-        });
+    const interviews = await Interview.find(query)
+      .select(
+        "questionsSources jobTitle experienceLevel status evaluation.overallScore candidateName candidateEmail createdAt",
+      )
+      .sort({
+        createdAt: -1,
+      });
 
     return res.status(200).json({
       status: "success",
@@ -1194,7 +894,6 @@ export const getAllInterviews = async (
         interviews,
       },
     });
-
   } catch (error) {
     return next(error);
   }
@@ -1204,29 +903,17 @@ export const getAllInterviews = async (
 // GET INTERVIEW DETAILS
 // ==================================================
 
-export const getInterviewDetails = async (
-  req,
-  res,
-  next
-) => {
+export const getInterviewDetails = async (req, res, next) => {
   try {
-    const {
-      interviewId,
-    } = req.params;
+    const { interviewId } = req.params;
 
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
-        userId: req.user.id,
-      });
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      userId: req.user.id,
+    });
 
     if (!interview) {
-      return next(
-        new AppError(
-          "No interview session found with that ID",
-          404
-        )
-      );
+      return next(new AppError("No interview session found with that ID", 404));
     }
 
     return res.status(200).json({
@@ -1236,7 +923,6 @@ export const getInterviewDetails = async (
         interview,
       },
     });
-
   } catch (error) {
     return next(error);
   }
@@ -1246,69 +932,40 @@ export const getInterviewDetails = async (
 // GET INTERVIEW REPORT
 // ==================================================
 
-export const getInterviewReport = async (
-  req,
-  res,
-  next
-) => {
+export const getInterviewReport = async (req, res, next) => {
   try {
-    const {
-      interviewId,
-    } = req.params;
+    const { interviewId } = req.params;
 
     if (!interviewId) {
-      return next(
-        new AppError(
-          "Interview ID is required",
-          400
-        )
-      );
+      return next(new AppError("Interview ID is required", 400));
     }
 
-    const interview =
-      await Interview.findOne({
-        _id: interviewId,
-        userId: req.user.id,
-      }).select(
-        "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt"
-      );
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      userId: req.user.id,
+    }).select(
+      "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt",
+    );
 
     if (!interview) {
-      return next(
-        new AppError(
-          "Interview report not found",
-          404
-        )
-      );
+      return next(new AppError("Interview report not found", 404));
     }
 
-    if (
-      interview.status !== "completed"
-    ) {
-      return next(
-        new AppError(
-          "Interview has not been evaluated yet",
-          400
-        )
-      );
+    if (interview.status !== "completed") {
+      return next(new AppError("Interview has not been evaluated yet", 400));
     }
 
     return res.status(200).json({
       status: "success",
 
-      message:
-        "Interview report fetched successfully",
+      message: "Interview report fetched successfully",
 
       data: {
         interview,
       },
     });
-
   } catch (error) {
-    console.error(
-      "❌ Get Interview Report Error:",
-      error
-    );
+    console.error(" Get Interview Report Error:", error);
 
     return next(error);
   }
