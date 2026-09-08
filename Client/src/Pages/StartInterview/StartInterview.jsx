@@ -5,14 +5,10 @@ import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
-import {
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { AlertCircle, Loader2} from "lucide-react";
 import API from "../../services/api";
 
-const WELCOME_TEXT =
-  "Hello, I'm Mira, your AI interviewer. Let's get started with your interview.";
+
 
 const ACTIVE_INTERVIEW_KEY = "acegrad_active_interview_id";
 
@@ -40,6 +36,7 @@ export default function StartInterview() {
   const [interviewID, setInterviewID] = useState("");
   const [questions, setQuestions] = useState([]);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
+  const [displayedQuestion, setDisplayedQuestion] = useState("");
   const [loadingDisplayQuestion, setLoadingDisplayQuestion] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -61,6 +58,8 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   const audioChunksRef = useRef([]);
   const audioElementRef = useRef(null);
   const audioUrlRef = useRef(null);
+  const firstQuestionAudioRef = useRef(null);
+const firstQuestionTextRef = useRef("");
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -70,6 +69,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   const hasWelcomedRef = useRef(false);
   const isUnmountingRef = useRef(false);
   const failedAnswerRef = useRef(null);
+
   // Prevent recovery API from running multiple times
   const recoveryStartedRef = useRef(false);
   // Prevent online event from triggering multiple recoveries
@@ -114,7 +114,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   // CONSTANTS
   // =========================================================
 
-  const SILENCE_DURATION = 4000;
+  const SILENCE_DURATION = 3000;
   const SILENCE_THRESHOLD = 0.015;
 
   // =========================================================
@@ -297,14 +297,29 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       setQuestions(recoveredQuestions);
       setCurrentQuestionIdx(nextQuestionIndex);
 
-      // Important:
-      // Welcome should NOT play again after refresh.
-      hasWelcomedRef.current = true;
+    setCurrentQuestionIdx(nextQuestionIndex);
 
-      interviewStartedRef.current = true;
+hasWelcomedRef.current = true;
+
+interviewStartedRef.current = true;
+
+const recoveredQuestion =
+  recoveredQuestions[nextQuestionIndex];
+
+const recoveredQuestionText =
+  typeof recoveredQuestion === "string"
+    ? recoveredQuestion
+    : recoveredQuestion?.questionText || "";
+
+if (recoveredQuestionText) {
+  setDisplayedQuestion(recoveredQuestionText);
+
+  setTimeout(() => {
+    speakQuestion(recoveredQuestionText);
+  }, 0);
+}
 
       saveActiveInterview(interview._id);
-
       console.log("✅ Interview recovered successfully.");
       console.log("📌 Questions:", recoveredQuestions);
       console.log("📌 Answers:", recoveredAnswers);
@@ -397,8 +412,10 @@ const [isEvaluating, setIsEvaluating] = useState(false);
         throw new Error("Invalid interview question source.");
       }
       console.log("Start Interview Response:", response?.data);
-
-      const interview = response?.data?.data?.interview;
+      const data = response?.data?.data;
+      const interview = data?.interview;
+     const firstQuestion = data?.firstQuestion;
+const welcomeAudio = data?.welcomeAudio;
       if (!interview?._id) {
         throw new Error("Interview session could not be created.");
       }
@@ -408,9 +425,15 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       ) {
         throw new Error("No interview questions were generated.");
       }
-
+     // Store backend-generated Q1 audio
+if (firstQuestion?.audioContent) {
+  firstQuestionAudioRef.current = firstQuestion;
+  firstQuestionTextRef.current = firstQuestion.question || "";
+}
       console.log("Interview ID:", interview._id);
       console.log("Questions:", interview.questions);
+console.log("Welcome Audio:", Boolean(welcomeAudio));
+console.log("First Question Audio:", Boolean(firstQuestion?.audioContent));
 
       // -------------------------------------------------------
       // IMPORTANT:
@@ -423,6 +446,17 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       setCurrentQuestionIdx(0);
 
       console.log("✅ New interview session started.");
+      // Start backend-generated Welcome → Q1 flow
+if (welcomeAudio?.audioContent && firstQuestion?.audioContent) { 
+  hasWelcomedRef.current = true;
+
+  setTimeout(() => {
+    speakWelcomeThenQuestion(
+     welcomeAudio,
+      firstQuestion,
+    );
+  }, 0);
+}
     } catch (error) {
       console.error("❌ Start Interview Error:", error);
       console.log("STATUS:", error.response?.status);
@@ -541,40 +575,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
     };
   }, [interviewID, isRecording, isSubmitting, isSpeaking]);
 
-  // =========================================================
-  // 4. QUESTION CHANGE → WELCOME OR TTS
-  // =========================================================
-  useEffect(() => {
-    if (questions.length === 0 || !interviewID || isComplete) {
-      return;
-    }
 
-    const question = questions[currentQuestionIdx];
-
-    console.log("🧪 CURRENT QUESTION:", question);
-
-    if (!question) {
-      return;
-    }
-
-    const questionText =
-      typeof question === "string" ? question : question?.questionText || "";
-
-    console.log("🧪 QUESTION TEXT:", questionText);
-
-    if (!questionText) {
-      return;
-    }
-
-    if (!hasWelcomedRef.current) {
-      hasWelcomedRef.current = true;
-      speakWelcomeThenQuestion(questionText);
-    } else {
-      speakQuestion(questionText);
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentQuestionIdx, questions, interviewID, isComplete]);
 
   // =========================================================
   // 5. TTS — GENERIC AUDIO PLAY HELPER
@@ -712,9 +713,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       console.log("▶️ Audio playing...");
     } catch (error) {
       console.error("❌ Text To Speech Error:", error);
-
       console.log("STATUS:", error.response?.status);
-
       console.log("BACKEND RESPONSE:", error.response?.data);
 
       setIsSpeaking(false);
@@ -730,22 +729,70 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   // =========================================================
   // 6. SPEAK WELCOME + QUESTION
   // =========================================================
+const speakWelcomeThenQuestion = (
+  welcomeAudio,
+  firstQuestionAudio,
+) => {
+  if (!welcomeAudio?.audioContent) {
+    const questionText =
+      firstQuestionAudio?.question ||
+      firstQuestionTextRef.current;
 
-  const speakWelcomeThenQuestion = (questionText) => {
-    playTTS(WELCOME_TEXT, () => speakQuestion(questionText));
-  };
-
-  // =========================================================
-  // 7. SPEAK QUESTION
-  // =========================================================
-
-  const speakQuestion = (questionText) => {
-    if (!questionText) {
-      return;
+    if (questionText) {
+      setDisplayedQuestion(questionText);
     }
 
-    playTTS(questionText, () => startRecording());
-  };
+    if (firstQuestionAudio?.audioContent) {
+      playBackendAudio(
+        firstQuestionAudio.audioContent,
+        firstQuestionAudio.contentType || "audio/wav",
+        () => {
+          startRecording();
+        },
+      );
+    } else {
+      speakQuestion(questionText);
+    }
+
+    return;
+  }
+
+  playBackendAudio(
+    welcomeAudio.audioContent,
+    welcomeAudio.contentType || "audio/wav",
+    () => {
+      const questionText =
+        firstQuestionAudio?.question ||
+        firstQuestionTextRef.current;
+
+      if (questionText) {
+        setDisplayedQuestion(questionText);
+      }
+
+      if (!firstQuestionAudio?.audioContent) {
+        speakQuestion(questionText);
+        return;
+      }
+
+      playBackendAudio(
+        firstQuestionAudio.audioContent,
+        firstQuestionAudio.contentType || "audio/wav",
+        () => {
+          startRecording();
+        },
+      );
+    },
+  );
+};
+
+const speakQuestion = (questionText) => {
+  if (!questionText) {
+    return;
+  }
+
+  playTTS(questionText, () => startRecording());
+};
+
 
   // =========================================================
   // 8. BASE64 → BLOB
@@ -757,9 +804,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
     }
 
     const cleanBase64 = base64.includes(",") ? base64.split(",")[1] : base64;
-
     const byteCharacters = window.atob(cleanBase64);
-
     const byteArrays = [];
 
     for (let offset = 0; offset < byteCharacters.length; offset += 1024) {
@@ -825,11 +870,14 @@ const [isEvaluating, setIsEvaluating] = useState(false);
 
       const mimeType = getSupportedMimeType();
 
-      const recorder = mimeType
-        ? new MediaRecorder(stream, {
-            mimeType,
-          })
-        : new MediaRecorder(stream);
+    const recorder = mimeType
+  ? new MediaRecorder(stream, {
+      mimeType,
+      audioBitsPerSecond: 64000,
+    })
+  : new MediaRecorder(stream, {
+      audioBitsPerSecond: 64000,
+    });
 
       mediaRecorderRef.current = recorder;
 
@@ -908,25 +956,15 @@ const [isEvaluating, setIsEvaluating] = useState(false);
     }
 
     const audioContext = new AudioContext();
-
     const source = audioContext.createMediaStreamSource(stream);
-
     const analyser = audioContext.createAnalyser();
-
     analyser.fftSize = 2048;
-
     analyser.smoothingTimeConstant = 0.8;
-
     source.connect(analyser);
-
     audioContextRef.current = audioContext;
-
     analyserRef.current = analyser;
-
     const dataArray = new Uint8Array(analyser.fftSize);
-
     let silenceStartedAt = null;
-
     let hasDetectedSpeech = false;
 
     const detectSilence = () => {
@@ -948,7 +986,6 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       }
 
       const rms = Math.sqrt(sum / dataArray.length);
-
       const isSilent = rms < SILENCE_THRESHOLD;
 
       if (!isSilent) {
@@ -963,7 +1000,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
         const silenceDuration = Date.now() - silenceStartedAt;
 
         if (silenceDuration >= SILENCE_DURATION) {
-          console.log("🔇 8 seconds silence detected after speech.");
+          console.log("🔇 3 seconds silence detected after speech.");
 
           stopRecording();
 
@@ -1013,7 +1050,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
 
       mediaRecorderRef.current.stop();
 
-      console.log("🛑 Recording stopped.");
+      console.log(" Recording stopped.");
     }
   };
 
@@ -1083,7 +1120,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       failedAnswerRef.current = answerData;
 
       setErrorMsg(
-        "Internet connection lost. Your answer is محفوظ ہے. Reconnect and retry.",
+        "Internet connection lost ,Reconnect and retry.",
       );
 
       return;
@@ -1119,20 +1156,43 @@ const [isEvaluating, setIsEvaluating] = useState(false);
       });
 
       const response = await API.post("/interview/submitAnswer", formData);
-      console.log("✅ Answer submitted:", response.data);
+      console.log(" Answer submitted:", response.data);
 
       // ---------------------------------------------
       // SUCCESS
       // ---------------------------------------------
       failedAnswerRef.current = null;
+      setHasFailedAnswer(false);
+      const result = response?.data?.data;
+const nextQuestion = result?.nextQuestion;
 
       const isLastQuestion = questionIndex + 1 >= questions.length;
 
-      if (isLastQuestion) {
+      if (isLastQuestion || !nextQuestion) {
         await finishInterview();
-      } else {
-        setCurrentQuestionIdx((prev) => prev + 1);
-      }
+        return;
+      } 
+      setCurrentQuestionIdx(nextQuestion.questionIndex);
+
+setCurrentQuestionIdx(nextQuestion.questionIndex);
+
+const nextQuestionText = nextQuestion.question || "";
+
+if (nextQuestionText) {
+  setDisplayedQuestion(nextQuestionText);
+}
+
+if (nextQuestion.audioContent) {
+  await playBackendAudio(
+    nextQuestion.audioContent,
+    nextQuestion.contentType || "audio/wav",
+    () => {
+      startRecording();
+    },
+  );
+} else {
+  speakQuestion(nextQuestionText);
+}
     } catch (error) {
       console.error("❌ Submit Answer Error:", error);
 
@@ -1147,7 +1207,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
         questionIndex,
         interviewId,
       };
-
+   setHasFailedAnswer(true);
       setErrorMsg(
         error.response?.data?.message ||
           "Answer submit nahi ho paya. Please retry.",
@@ -1276,12 +1336,7 @@ setEvaluationError(true);
         mediaStreamRef.current = null;
       }
 
-      // IMPORTANT:
-      // We intentionally DO NOT remove
-      // ACTIVE_INTERVIEW_KEY here.
-      //
-      // React unmount also happens during browser refresh.
-      // Keeping the ID allows recovery after refresh.
+      
     };
   }, []);
 
@@ -1301,9 +1356,9 @@ setEvaluationError(true);
   // TRANSCRIPTION PANEL
   // =========================================================
 
-  const transcriptionItems = questions[currentQuestionIdx]
-    ? [questions[currentQuestionIdx]]
-    : [];
+  const transcriptionItems = displayedQuestion
+  ? [displayedQuestion]
+  : [];
 
   // =========================================================
   // COMPLETE SCREEN
@@ -1691,7 +1746,7 @@ setEvaluationError(true);
 
         <div className="mx-auto grid w-[900px] max-w-[1100px] grid-cols-2 gap-8">
           <div className="h-[320px]">
-            <InterviewerPanel isSpeaking={isSpeaking} interviewerName="Mira" />
+            <InterviewerPanel isSpeaking={isSpeaking} interviewerName="Isha" />
           </div>
 
           <div className="h-[320px]">
