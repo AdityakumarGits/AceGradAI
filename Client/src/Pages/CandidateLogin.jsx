@@ -7,9 +7,6 @@ import { useAuth } from "../context/AuthContext";
 
 
 
-
-
-
 const CandidateLogin = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
@@ -57,13 +54,7 @@ const CandidateLogin = () => {
 
   try {
     setLoading(true);
-
-    const response = await axios.post(
-      "http://localhost:5000/api/v1/auth/forgot-password",
-      {
-        email,
-      }
-    );
+  const response = await API.post( "auth/forgot-password",{ email });
 
     candidateToast.error(response.data.message || "Password reset link sent to your email.");
   } catch (error) {
@@ -131,7 +122,7 @@ const CandidateLogin = () => {
           </div>
           <div className="flex justify-end">
             <button onClick={handleForgotPassword}
-              type="submit"
+              type="button"
             //  onClick={()=>{navigate("/forget-password")}}
               className="text-sm text-indigo-400 hover:text-red-500 transition"
             >

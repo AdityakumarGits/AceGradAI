@@ -23,7 +23,7 @@ if (password !== confirmPassword) {
   candidateToast.error("Passwords do not match");
   return;
 }
-   if (password.length < 6) {
+   if (password.length < 8) {
     candidateToast.error("Password must be at least 8 characters");
      return;
    }

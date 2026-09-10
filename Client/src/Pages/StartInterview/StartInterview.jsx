@@ -5,10 +5,8 @@ import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
-import { AlertCircle, Loader2} from "lucide-react";
+import { AlertCircle, Loader2 } from "lucide-react";
 import API from "../../services/api";
-
-
 
 const ACTIVE_INTERVIEW_KEY = "acegrad_active_interview_id";
 
@@ -47,7 +45,7 @@ export default function StartInterview() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [hasFailedAnswer, setHasFailedAnswer] = useState(false);
   const [evaluationError, setEvaluationError] = useState(false);
-const [isEvaluating, setIsEvaluating] = useState(false);
+  const [isEvaluating, setIsEvaluating] = useState(false);
 
   // =========================================================
   // REFS
@@ -59,7 +57,7 @@ const [isEvaluating, setIsEvaluating] = useState(false);
   const audioElementRef = useRef(null);
   const audioUrlRef = useRef(null);
   const firstQuestionAudioRef = useRef(null);
-const firstQuestionTextRef = useRef("");
+  const firstQuestionTextRef = useRef("");
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const animationFrameRef = useRef(null);
@@ -297,27 +295,26 @@ const firstQuestionTextRef = useRef("");
       setQuestions(recoveredQuestions);
       setCurrentQuestionIdx(nextQuestionIndex);
 
-    setCurrentQuestionIdx(nextQuestionIndex);
+      setCurrentQuestionIdx(nextQuestionIndex);
 
-hasWelcomedRef.current = true;
+      hasWelcomedRef.current = true;
 
-interviewStartedRef.current = true;
+      interviewStartedRef.current = true;
 
-const recoveredQuestion =
-  recoveredQuestions[nextQuestionIndex];
+      const recoveredQuestion = recoveredQuestions[nextQuestionIndex];
 
-const recoveredQuestionText =
-  typeof recoveredQuestion === "string"
-    ? recoveredQuestion
-    : recoveredQuestion?.questionText || "";
+      const recoveredQuestionText =
+        typeof recoveredQuestion === "string"
+          ? recoveredQuestion
+          : recoveredQuestion?.questionText || "";
 
-if (recoveredQuestionText) {
-  setDisplayedQuestion(recoveredQuestionText);
+      if (recoveredQuestionText) {
+        setDisplayedQuestion(recoveredQuestionText);
 
-  setTimeout(() => {
-    speakQuestion(recoveredQuestionText);
-  }, 0);
-}
+        setTimeout(() => {
+          speakQuestion(recoveredQuestionText);
+        }, 0);
+      }
 
       saveActiveInterview(interview._id);
       console.log("✅ Interview recovered successfully.");
@@ -414,8 +411,8 @@ if (recoveredQuestionText) {
       console.log("Start Interview Response:", response?.data);
       const data = response?.data?.data;
       const interview = data?.interview;
-     const firstQuestion = data?.firstQuestion;
-const welcomeAudio = data?.welcomeAudio;
+      const firstQuestion = data?.firstQuestion;
+      const welcomeAudio = data?.welcomeAudio;
       if (!interview?._id) {
         throw new Error("Interview session could not be created.");
       }
@@ -425,15 +422,18 @@ const welcomeAudio = data?.welcomeAudio;
       ) {
         throw new Error("No interview questions were generated.");
       }
-     // Store backend-generated Q1 audio
-if (firstQuestion?.audioContent) {
-  firstQuestionAudioRef.current = firstQuestion;
-  firstQuestionTextRef.current = firstQuestion.question || "";
-}
+      // Store backend-generated Q1 audio
+      if (firstQuestion?.audioContent) {
+        firstQuestionAudioRef.current = firstQuestion;
+        firstQuestionTextRef.current = firstQuestion.question || "";
+      }
       console.log("Interview ID:", interview._id);
       console.log("Questions:", interview.questions);
-console.log("Welcome Audio:", Boolean(welcomeAudio));
-console.log("First Question Audio:", Boolean(firstQuestion?.audioContent));
+      console.log("Welcome Audio:", Boolean(welcomeAudio));
+      console.log(
+        "First Question Audio:",
+        Boolean(firstQuestion?.audioContent),
+      );
 
       // -------------------------------------------------------
       // IMPORTANT:
@@ -447,16 +447,13 @@ console.log("First Question Audio:", Boolean(firstQuestion?.audioContent));
 
       console.log("✅ New interview session started.");
       // Start backend-generated Welcome → Q1 flow
-if (welcomeAudio?.audioContent && firstQuestion?.audioContent) { 
-  hasWelcomedRef.current = true;
+      if (welcomeAudio?.audioContent && firstQuestion?.audioContent) {
+        hasWelcomedRef.current = true;
 
-  setTimeout(() => {
-    speakWelcomeThenQuestion(
-     welcomeAudio,
-      firstQuestion,
-    );
-  }, 0);
-}
+        setTimeout(() => {
+          speakWelcomeThenQuestion(welcomeAudio, firstQuestion);
+        }, 0);
+      }
     } catch (error) {
       console.error("❌ Start Interview Error:", error);
       console.log("STATUS:", error.response?.status);
@@ -575,8 +572,6 @@ if (welcomeAudio?.audioContent && firstQuestion?.audioContent) {
     };
   }, [interviewID, isRecording, isSubmitting, isSpeaking]);
 
-
-
   // =========================================================
   // 5. TTS — GENERIC AUDIO PLAY HELPER
   // =========================================================
@@ -643,7 +638,6 @@ if (welcomeAudio?.audioContent && firstQuestion?.audioContent) {
       console.log("✅ Audio received. Base64 length:", audioBase64.length);
 
       const audioBlob = base64ToBlob(audioBase64, "audio/wav");
-
       if (!audioBlob || audioBlob.size === 0) {
         throw new Error("TTS audio blob is empty.");
       }
@@ -725,74 +719,159 @@ if (welcomeAudio?.audioContent && firstQuestion?.audioContent) {
       );
     }
   };
-
-  // =========================================================
-  // 6. SPEAK WELCOME + QUESTION
-  // =========================================================
-const speakWelcomeThenQuestion = (
-  welcomeAudio,
-  firstQuestionAudio,
+const playBackendAudio = (
+  audioContent,
+  contentType = "audio/wav",
+  onFinished
 ) => {
-  if (!welcomeAudio?.audioContent) {
-    const questionText =
-      firstQuestionAudio?.question ||
-      firstQuestionTextRef.current;
-
-    if (questionText) {
-      setDisplayedQuestion(questionText);
-    }
-
-    if (firstQuestionAudio?.audioContent) {
-      playBackendAudio(
-        firstQuestionAudio.audioContent,
-        firstQuestionAudio.contentType || "audio/wav",
-        () => {
-          startRecording();
-        },
-      );
-    } else {
-      speakQuestion(questionText);
-    }
-
+  if (!audioContent) {
+    setErrorMsg("Audio data missing.");
     return;
   }
 
-  playBackendAudio(
-    welcomeAudio.audioContent,
-    welcomeAudio.contentType || "audio/wav",
-    () => {
+  try {
+    // Stop previous audio
+    if (audioElementRef.current) {
+      const oldAudio = audioElementRef.current;
+
+      oldAudio.onended = null;
+      oldAudio.onerror = null;
+      oldAudio.onabort = null;
+
+      oldAudio.pause();
+      oldAudio.removeAttribute("src");
+      oldAudio.load();
+
+      audioElementRef.current = null;
+    }
+
+    // Revoke previous blob URL
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+
+    const audioBlob = base64ToBlob(audioContent, contentType);
+    const audioUrl = URL.createObjectURL(audioBlob);
+
+    const audio = new Audio(audioUrl);
+
+    audio.preload = "auto";
+
+    audioElementRef.current = audio;
+    audioUrlRef.current = audioUrl;
+
+    setIsSpeaking(true);
+    setIsRecording(false);
+
+    audio.onended = () => {
+      URL.revokeObjectURL(audioUrl);
+
+      if (audioElementRef.current === audio) {
+        audioElementRef.current = null;
+      }
+
+      if (audioUrlRef.current === audioUrl) {
+        audioUrlRef.current = null;
+      }
+
+      setIsSpeaking(false);
+
+      // IMPORTANT
+      onFinished?.();
+    };
+
+    audio.onerror = (error) => {
+      console.error(" Backend audio playback error:", error);
+
+      URL.revokeObjectURL(audioUrl);
+
+      if (audioElementRef.current === audio) {
+        audioElementRef.current = null;
+      }
+
+      if (audioUrlRef.current === audioUrl) {
+        audioUrlRef.current = null;
+      }
+
+      setIsSpeaking(false);
+      setErrorMsg("Audio playback error.");
+    };
+
+    audio.play().catch((error) => {
+      console.error("❌ Backend audio play failed:", error);
+
+      setIsSpeaking(false);
+      setErrorMsg("Audio playback start nahi ho paya.");
+    });
+  } catch (error) {
+    console.error("❌ Backend audio error:", error);
+
+    setIsSpeaking(false);
+    setErrorMsg(error?.message || "Audio playback failed.");
+  }
+};
+  // =========================================================
+  // 6. SPEAK WELCOME + QUESTION
+  // =========================================================
+  const speakWelcomeThenQuestion = (welcomeAudio, firstQuestionAudio) => {
+    if (!welcomeAudio?.audioContent) {
       const questionText =
-        firstQuestionAudio?.question ||
-        firstQuestionTextRef.current;
+        firstQuestionAudio?.question || firstQuestionTextRef.current;
 
       if (questionText) {
         setDisplayedQuestion(questionText);
       }
 
-      if (!firstQuestionAudio?.audioContent) {
+      if (firstQuestionAudio?.audioContent) {
+        playBackendAudio(
+          firstQuestionAudio.audioContent,
+          firstQuestionAudio.contentType ,
+          () => {
+            startRecording();
+          },
+        );
+      } else {
         speakQuestion(questionText);
-        return;
       }
 
-      playBackendAudio(
-        firstQuestionAudio.audioContent,
-        firstQuestionAudio.contentType || "audio/wav",
-        () => {
-          startRecording();
-        },
-      );
-    },
-  );
-};
+      return;
+    }
 
-const speakQuestion = (questionText) => {
-  if (!questionText) {
-    return;
-  }
+    playBackendAudio(
+      welcomeAudio.audioContent,
+      welcomeAudio.contentType || "audio/wav",
+      () => {
+        const questionText =
+          firstQuestionAudio?.question || firstQuestionTextRef.current;
 
-  playTTS(questionText, () => startRecording());
-};
+        if (questionText) {
+          setDisplayedQuestion(questionText);
+        }
 
+        if (!firstQuestionAudio?.audioContent) {
+          speakQuestion(questionText);
+          return;
+        }
+
+        playBackendAudio(
+          firstQuestionAudio.audioContent,
+          firstQuestionAudio.contentType || "audio/wav",
+          () => {
+            startRecording();
+          },
+        );
+      },
+    );
+  };
+
+  const speakQuestion = (questionText) => {
+    if (!questionText) {
+      return;
+    }
+
+    playTTS(questionText, () => startRecording());
+  };
 
   // =========================================================
   // 8. BASE64 → BLOB
@@ -865,24 +944,19 @@ const speakQuestion = (questionText) => {
       const stream = await getMicrophoneStream();
 
       setErrorMsg(null);
-
       audioChunksRef.current = [];
-
       const mimeType = getSupportedMimeType();
-
-    const recorder = mimeType
-  ? new MediaRecorder(stream, {
-      mimeType,
-      audioBitsPerSecond: 64000,
-    })
-  : new MediaRecorder(stream, {
-      audioBitsPerSecond: 64000,
-    });
+      const recorder = mimeType
+        ? new MediaRecorder(stream, {
+            mimeType,
+            audioBitsPerSecond: 64000,
+          })
+        : new MediaRecorder(stream, {
+            audioBitsPerSecond: 64000,
+          });
 
       mediaRecorderRef.current = recorder;
-
       hasStartedRecordingRef.current = true;
-
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
@@ -905,11 +979,8 @@ const speakQuestion = (questionText) => {
       };
 
       recorder.start();
-
       setIsRecording(true);
-
       console.log("🎙️ Recording started.");
-
       startSilenceDetection(stream);
     } catch (error) {
       console.error("❌ Recording Start Error:", error);
@@ -935,7 +1006,7 @@ const speakQuestion = (questionText) => {
   // =========================================================
 
   const getSupportedMimeType = () => {
-    const types = ["audio/webm;codecs=opus", "audio/webm", ];
+    const types = ["audio/webm;codecs=opus", "audio/webm"];
 
     return types.find((type) => MediaRecorder.isTypeSupported(type)) || "";
   };
@@ -1119,9 +1190,7 @@ const speakQuestion = (questionText) => {
       // IMPORTANT: preserve audio
       failedAnswerRef.current = answerData;
 
-      setErrorMsg(
-        "Internet connection lost ,Reconnect and retry.",
-      );
+      setErrorMsg("Internet connection lost ,Reconnect and retry.");
 
       return;
     }
@@ -1164,35 +1233,33 @@ const speakQuestion = (questionText) => {
       failedAnswerRef.current = null;
       setHasFailedAnswer(false);
       const result = response?.data?.data;
-const nextQuestion = result?.nextQuestion;
+      const nextQuestion = result?.nextQuestion;
 
       const isLastQuestion = questionIndex + 1 >= questions.length;
 
       if (isLastQuestion || !nextQuestion) {
         await finishInterview();
         return;
-      } 
+      }
       setCurrentQuestionIdx(nextQuestion.questionIndex);
 
-setCurrentQuestionIdx(nextQuestion.questionIndex);
+      const nextQuestionText = nextQuestion.question || "";
 
-const nextQuestionText = nextQuestion.question || "";
+      if (nextQuestionText) {
+        setDisplayedQuestion(nextQuestionText);
+      }
 
-if (nextQuestionText) {
-  setDisplayedQuestion(nextQuestionText);
-}
-
-if (nextQuestion.audioContent) {
-  await playBackendAudio(
-    nextQuestion.audioContent,
-    nextQuestion.contentType || "audio/wav",
-    () => {
-      startRecording();
-    },
-  );
-} else {
-  speakQuestion(nextQuestionText);
-}
+      if (nextQuestion.audioContent) {
+        await playBackendAudio(
+          nextQuestion.audioContent,
+          nextQuestion.contentType || "audio/wav",
+          () => {
+            startRecording();
+          },
+        );
+      } else {
+        speakQuestion(nextQuestionText);
+      }
     } catch (error) {
       console.error("❌ Submit Answer Error:", error);
 
@@ -1207,7 +1274,7 @@ if (nextQuestion.audioContent) {
         questionIndex,
         interviewId,
       };
-   setHasFailedAnswer(true);
+      setHasFailedAnswer(true);
       setErrorMsg(
         error.response?.data?.message ||
           "Answer submit nahi ho paya. Please retry.",
@@ -1259,9 +1326,9 @@ if (nextQuestion.audioContent) {
     }
 
     try {
-        setErrorMsg(null);
-    setEvaluationError(false);
-    setIsEvaluating(true);
+      setErrorMsg(null);
+      setEvaluationError(false);
+      setIsEvaluating(true);
       console.log("🏁 Ending interview:", interviewID);
       const response = await API.post("/interview/endInterview", {
         interviewId: interviewID,
@@ -1278,18 +1345,18 @@ if (nextQuestion.audioContent) {
       console.error("❌ End Interview Error:", error);
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
-setEvaluationError(true);
+      setEvaluationError(true);
       setErrorMsg(
         error.response?.data?.message ||
-           "We couldn't generate your evaluation. Your answers are safely saved. Please retry.",
+          "We couldn't generate your evaluation. Your answers are safely saved. Please retry.",
       );
 
       // IMPORTANT:
       // Do NOT clear active interview here.
       // If evaluation API fails, refresh can recover
       // the interview again.
-      } finally {
-    setIsEvaluating(false);
+    } finally {
+      setIsEvaluating(false);
     }
   };
 
@@ -1335,8 +1402,6 @@ setEvaluationError(true);
         mediaStreamRef.current.getTracks().forEach((track) => track.stop());
         mediaStreamRef.current = null;
       }
-
-      
     };
   }, []);
 
@@ -1356,9 +1421,7 @@ setEvaluationError(true);
   // TRANSCRIPTION PANEL
   // =========================================================
 
-  const transcriptionItems = displayedQuestion
-  ? [displayedQuestion]
-  : [];
+  const transcriptionItems = displayedQuestion ? [displayedQuestion] : [];
 
   // =========================================================
   // COMPLETE SCREEN
@@ -1372,272 +1435,265 @@ setEvaluationError(true);
 
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
 
-         {/* Evaluation Error / Retry */}
-{evaluationError && !evaluation && !isComplete && (
-  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-      <AlertCircle className="h-6 w-6 text-red-400" />
-    </div>
+          {/* Evaluation Error / Retry */}
+          {evaluationError && !evaluation && !isComplete && (
+            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <AlertCircle className="h-6 w-6 text-red-400" />
+              </div>
 
-    <h3 className="text-lg font-semibold text-white">
-      Evaluation Failed
-    </h3>
+              <h3 className="text-lg font-semibold text-white">
+                Evaluation Failed
+              </h3>
 
-    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-      Your interview answers are safely saved, but we couldn't
-      generate your evaluation right now.
-    </p>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+                Your interview answers are safely saved, but we couldn't
+                generate your evaluation right now.
+              </p>
 
-    <button
-      onClick={finishInterview}
-      disabled={isEvaluating || isOffline}
-      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isEvaluating ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Generating Evaluation...
-        </>
-      ) : (
-        "Retry Evaluation"
-      )}
-    </button>
-
-    {isOffline && (
-      <p className="mt-3 text-xs text-red-300">
-        Internet connection lost. Reconnect and try again.
-      </p>
-    )}
-  </div>
-)}
-
-{/* Evaluation Loading */}
-{isEvaluating && (
-  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-    <p className="mt-3 font-medium text-white">
-      Generating your evaluation...
-    </p>
-
-    <p className="mt-1 text-sm text-[#9aa1b4]">
-      Please wait while AI analyzes your interview.
-    </p>
-  </div>
-)}
-
-{/* Evaluation Error / Retry */}
-{evaluationError && !evaluation && !isComplete && (
-  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-      <AlertCircle className="h-6 w-6 text-red-400" />
-    </div>
-
-    <h3 className="text-lg font-semibold text-white">
-      Evaluation Failed
-    </h3>
-
-    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-      Your interview answers are safely saved, but we couldn't
-      generate your evaluation right now.
-    </p>
-
-    <button
-      onClick={finishInterview}
-      disabled={isEvaluating || isOffline}
-      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isEvaluating ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Generating Evaluation...
-        </>
-      ) : (
-        "Retry Evaluation"
-      )}
-    </button>
-
-    {isOffline && (
-      <p className="mt-3 text-xs text-red-300">
-        Internet connection lost. Reconnect and try again.
-      </p>
-    )}
-  </div>
-)}
-
-{/* Evaluation Loading */}
-{isEvaluating && (
-  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-    <p className="mt-3 font-medium text-white">
-      Generating your evaluation...
-    </p>
-
-    <p className="mt-1 text-sm text-[#9aa1b4]">
-      Please wait while AI analyzes your interview.
-    </p>
-  </div>
-)}
-
-{/* Evaluation Error / Retry */}
-{evaluationError && !evaluation && !isComplete && (
-  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-      <AlertCircle className="h-6 w-6 text-red-400" />
-    </div>
-
-    <h3 className="text-lg font-semibold text-white">
-      Evaluation Failed
-    </h3>
-
-    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-      Your interview answers are safely saved, but we couldn't
-      generate your evaluation right now.
-    </p>
-
-    <button
-      onClick={finishInterview}
-      disabled={isEvaluating || isOffline}
-      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isEvaluating ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Generating Evaluation...
-        </>
-      ) : (
-        "Retry Evaluation"
-      )}
-    </button>
-
-    {isOffline && (
-      <p className="mt-3 text-xs text-red-300">
-        Internet connection lost. Reconnect and try again.
-      </p>
-    )}
-  </div>
-)}
-
-{/* Evaluation Loading */}
-{isEvaluating && (
-  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-    <p className="mt-3 font-medium text-white">
-      Generating your evaluation...
-    </p>
-
-    <p className="mt-1 text-sm text-[#9aa1b4]">
-      Please wait while AI analyzes your interview.
-    </p>
-  </div>
-)}
-
-{/* Evaluation Error / Retry */}
-{evaluationError && !evaluation && !isComplete && (
-  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-      <AlertCircle className="h-6 w-6 text-red-400" />
-    </div>
-
-    <h3 className="text-lg font-semibold text-white">
-      Evaluation Failed
-    </h3>
-
-    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-      Your interview answers are safely saved, but we couldn't
-      generate your evaluation right now.
-    </p>
-
-    <button
-      onClick={finishInterview}
-      disabled={isEvaluating || isOffline}
-      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-    >
-      {isEvaluating ? (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Generating Evaluation...
-        </>
-      ) : (
-        "Retry Evaluation"
-      )}
-    </button>
-
-    {isOffline && (
-      <p className="mt-3 text-xs text-red-300">
-        Internet connection lost. Reconnect and try again.
-      </p>
-    )}
-  </div>
-)}
-
-{/* Evaluation Loading */}
-{isEvaluating && (
-  <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-    <p className="mt-3 font-medium text-white">
-      Generating your evaluation...
-    </p>
-
-    <p className="mt-1 text-sm text-[#9aa1b4]">
-      Please wait while AI analyzes your interview.
-    </p>
-  </div>
-)}
-
-{/* Existing Evaluation */}
-{evaluation && (
-  <div className="mt-8 text-left">
-
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-      <p className="text-sm text-[#9aa1b4]">
-        Overall Score
-      </p>
-
-      <p className="mt-2 text-5xl font-bold text-white">
-        {evaluation.overallScore}
-        <span className="text-2xl text-[#9aa1b4]">
-          /10
-        </span>
-      </p>
-    </div>
-
-    {evaluation.feedbackSummary && (
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-        <h3 className="font-semibold text-white">
-          Feedback
-        </h3>
-
-        <p className="mt-2 text-sm leading-6 text-[#b8becd]">
-          {evaluation.feedbackSummary}
-        </p>
-      </div>
-    )}
-
-    {Array.isArray(evaluation.skillsAssessment) &&
-      evaluation.skillsAssessment.length > 0 && (
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h3 className="font-semibold text-white">
-            Skills Assessment
-          </h3>
-
-          <div className="mt-3 flex flex-wrap gap-2">
-            {evaluation.skillsAssessment.map((skill, index) => (
-              <span
-                key={index}
-                className="rounded-full border border-[#6366f1]/30 bg-[#6366f1]/10 px-3 py-1.5 text-xs text-[#d7d9e3]"
+              <button
+                onClick={finishInterview}
+                disabled={isEvaluating || isOffline}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {skill}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-  </div>
-)}
+                {isEvaluating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Evaluation...
+                  </>
+                ) : (
+                  "Retry Evaluation"
+                )}
+              </button>
+
+              {isOffline && (
+                <p className="mt-3 text-xs text-red-300">
+                  Internet connection lost. Reconnect and try again.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Evaluation Loading */}
+          {isEvaluating && (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+              <p className="mt-3 font-medium text-white">
+                Generating your evaluation...
+              </p>
+
+              <p className="mt-1 text-sm text-[#9aa1b4]">
+                Please wait while AI analyzes your interview.
+              </p>
+            </div>
+          )}
+
+          {/* Evaluation Error / Retry */}
+          {evaluationError && !evaluation && !isComplete && (
+            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <AlertCircle className="h-6 w-6 text-red-400" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-white">
+                Evaluation Failed
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+                Your interview answers are safely saved, but we couldn't
+                generate your evaluation right now.
+              </p>
+
+              <button
+                onClick={finishInterview}
+                disabled={isEvaluating || isOffline}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isEvaluating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Evaluation...
+                  </>
+                ) : (
+                  "Retry Evaluation"
+                )}
+              </button>
+
+              {isOffline && (
+                <p className="mt-3 text-xs text-red-300">
+                  Internet connection lost. Reconnect and try again.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Evaluation Loading */}
+          {isEvaluating && (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+              <p className="mt-3 font-medium text-white">
+                Generating your evaluation...
+              </p>
+
+              <p className="mt-1 text-sm text-[#9aa1b4]">
+                Please wait while AI analyzes your interview.
+              </p>
+            </div>
+          )}
+
+          {/* Evaluation Error / Retry */}
+          {evaluationError && !evaluation && !isComplete && (
+            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <AlertCircle className="h-6 w-6 text-red-400" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-white">
+                Evaluation Failed
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+                Your interview answers are safely saved, but we couldn't
+                generate your evaluation right now.
+              </p>
+
+              <button
+                onClick={finishInterview}
+                disabled={isEvaluating || isOffline}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isEvaluating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Evaluation...
+                  </>
+                ) : (
+                  "Retry Evaluation"
+                )}
+              </button>
+
+              {isOffline && (
+                <p className="mt-3 text-xs text-red-300">
+                  Internet connection lost. Reconnect and try again.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Evaluation Loading */}
+          {isEvaluating && (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+              <p className="mt-3 font-medium text-white">
+                Generating your evaluation...
+              </p>
+
+              <p className="mt-1 text-sm text-[#9aa1b4]">
+                Please wait while AI analyzes your interview.
+              </p>
+            </div>
+          )}
+
+          {/* Evaluation Error / Retry */}
+          {evaluationError && !evaluation && !isComplete && (
+            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+                <AlertCircle className="h-6 w-6 text-red-400" />
+              </div>
+
+              <h3 className="text-lg font-semibold text-white">
+                Evaluation Failed
+              </h3>
+
+              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+                Your interview answers are safely saved, but we couldn't
+                generate your evaluation right now.
+              </p>
+
+              <button
+                onClick={finishInterview}
+                disabled={isEvaluating || isOffline}
+                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {isEvaluating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Generating Evaluation...
+                  </>
+                ) : (
+                  "Retry Evaluation"
+                )}
+              </button>
+
+              {isOffline && (
+                <p className="mt-3 text-xs text-red-300">
+                  Internet connection lost. Reconnect and try again.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Evaluation Loading */}
+          {isEvaluating && (
+            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+
+              <p className="mt-3 font-medium text-white">
+                Generating your evaluation...
+              </p>
+
+              <p className="mt-1 text-sm text-[#9aa1b4]">
+                Please wait while AI analyzes your interview.
+              </p>
+            </div>
+          )}
+
+          {/* Existing Evaluation */}
+          {evaluation && (
+            <div className="mt-8 text-left">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
+                <p className="text-sm text-[#9aa1b4]">Overall Score</p>
+
+                <p className="mt-2 text-5xl font-bold text-white">
+                  {evaluation.overallScore}
+                  <span className="text-2xl text-[#9aa1b4]">/10</span>
+                </p>
+              </div>
+
+              {evaluation.feedbackSummary && (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+                  <h3 className="font-semibold text-white">Feedback</h3>
+
+                  <p className="mt-2 text-sm leading-6 text-[#b8becd]">
+                    {evaluation.feedbackSummary}
+                  </p>
+                </div>
+              )}
+
+              {Array.isArray(evaluation.skillsAssessment) &&
+                evaluation.skillsAssessment.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <h3 className="font-semibold text-white">
+                      Skills Assessment
+                    </h3>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {evaluation.skillsAssessment.map((skill, index) => (
+                        <span
+                          key={index}
+                          className="rounded-full border border-[#6366f1]/30 bg-[#6366f1]/10 px-3 py-1.5 text-xs text-[#d7d9e3]"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+            </div>
+          )}
         </div>
       </div>
     );
