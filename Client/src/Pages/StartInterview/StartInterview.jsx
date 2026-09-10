@@ -68,10 +68,14 @@ export default function StartInterview() {
   const isUnmountingRef = useRef(false);
   const failedAnswerRef = useRef(null);
 
+
   // Prevent recovery API from running multiple times
   const recoveryStartedRef = useRef(false);
   // Prevent online event from triggering multiple recoveries
   const reconnectingRef = useRef(false);
+  const questionPlaybackRef = useRef(null);
+
+
   useEffect(() => {
     return () => {
       isUnmountingRef.current = true;
@@ -295,14 +299,10 @@ export default function StartInterview() {
       setQuestions(recoveredQuestions);
       setCurrentQuestionIdx(nextQuestionIndex);
 
-      setCurrentQuestionIdx(nextQuestionIndex);
-
       hasWelcomedRef.current = true;
-
       interviewStartedRef.current = true;
 
       const recoveredQuestion = recoveredQuestions[nextQuestionIndex];
-
       const recoveredQuestionText =
         typeof recoveredQuestion === "string"
           ? recoveredQuestion
@@ -310,21 +310,24 @@ export default function StartInterview() {
 
       if (recoveredQuestionText) {
         setDisplayedQuestion(recoveredQuestionText);
+       const playbackKey = `${interview._id}-${nextQuestionIndex}`;
 
-        setTimeout(() => {
-          speakQuestion(recoveredQuestionText);
-        }, 0);
+  if (questionPlaybackRef.current === playbackKey) {
+    console.log("⏭️ Question audio already played/skipped:", playbackKey);
+     } else {
+    questionPlaybackRef.current = playbackKey;
+        speakQuestion(recoveredQuestionText);
       }
-
+    }
       saveActiveInterview(interview._id);
-      console.log("✅ Interview recovered successfully.");
-      console.log("📌 Questions:", recoveredQuestions);
-      console.log("📌 Answers:", recoveredAnswers);
-      console.log("📌 Resuming from question:", nextQuestionIndex + 1);
+      console.log(" Interview recovered successfully.");
+      console.log(" Questions:", recoveredQuestions);
+      console.log(" Answers:", recoveredAnswers);
+      console.log(" Resuming from question:", nextQuestionIndex + 1);
 
       return true;
     } catch (error) {
-      console.error("❌ Interview Recovery Error:", error);
+      console.error(" Interview Recovery Error:", error);
 
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
@@ -869,8 +872,23 @@ const playBackendAudio = (
     if (!questionText) {
       return;
     }
+      if (
+    hasStartedRecordingRef.current ||
+    isSubmittingRef.current ||
+    isComplete
+  ) {
+    return;
+  }
 
-    playTTS(questionText, () => startRecording());
+     playTTS(questionText, () => {
+    if (
+      !hasStartedRecordingRef.current &&
+      !isSubmittingRef.current &&
+      !isComplete
+    ) {
+      startRecording();
+    }
+  });
   };
 
   // =========================================================
@@ -1244,7 +1262,6 @@ const playBackendAudio = (
       setCurrentQuestionIdx(nextQuestion.questionIndex);
 
       const nextQuestionText = nextQuestion.question || "";
-
       if (nextQuestionText) {
         setDisplayedQuestion(nextQuestionText);
       }
@@ -1432,224 +1449,46 @@ const playBackendAudio = (
       <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 text-[#eaecf0]">
         <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 text-center shadow-2xl backdrop-blur-xl">
           <h2 className="text-3xl font-bold text-white">Interview Complete!</h2>
-
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
 
-          {/* Evaluation Error / Retry */}
-          {evaluationError && !evaluation && !isComplete && (
-            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-6 w-6 text-red-400" />
-              </div>
+      {/* Evaluation Error / Retry */}
+{evaluationError && !evaluation && (
+  <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
+    <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
+      <AlertCircle className="h-6 w-6 text-red-400" />
+    </div>
 
-              <h3 className="text-lg font-semibold text-white">
-                Evaluation Failed
-              </h3>
+    <h3 className="text-lg font-semibold text-white">
+      Evaluation Failed
+    </h3>
 
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-                Your interview answers are safely saved, but we couldn't
-                generate your evaluation right now.
-              </p>
+    <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
+      Your interview answers are safely saved, but we couldn't
+      generate your evaluation right now.
+    </p>
 
-              <button
-                onClick={finishInterview}
-                disabled={isEvaluating || isOffline}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isEvaluating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating Evaluation...
-                  </>
-                ) : (
-                  "Retry Evaluation"
-                )}
-              </button>
+    <button
+      onClick={finishInterview}
+      disabled={isEvaluating || isOffline}
+      className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {isEvaluating ? (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Generating Evaluation...
+        </>
+      ) : (
+        "Retry Evaluation"
+      )}
+    </button>
 
-              {isOffline && (
-                <p className="mt-3 text-xs text-red-300">
-                  Internet connection lost. Reconnect and try again.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Evaluation Loading */}
-          {isEvaluating && (
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-              <p className="mt-3 font-medium text-white">
-                Generating your evaluation...
-              </p>
-
-              <p className="mt-1 text-sm text-[#9aa1b4]">
-                Please wait while AI analyzes your interview.
-              </p>
-            </div>
-          )}
-
-          {/* Evaluation Error / Retry */}
-          {evaluationError && !evaluation && !isComplete && (
-            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-6 w-6 text-red-400" />
-              </div>
-
-              <h3 className="text-lg font-semibold text-white">
-                Evaluation Failed
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-                Your interview answers are safely saved, but we couldn't
-                generate your evaluation right now.
-              </p>
-
-              <button
-                onClick={finishInterview}
-                disabled={isEvaluating || isOffline}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isEvaluating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating Evaluation...
-                  </>
-                ) : (
-                  "Retry Evaluation"
-                )}
-              </button>
-
-              {isOffline && (
-                <p className="mt-3 text-xs text-red-300">
-                  Internet connection lost. Reconnect and try again.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Evaluation Loading */}
-          {isEvaluating && (
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-              <p className="mt-3 font-medium text-white">
-                Generating your evaluation...
-              </p>
-
-              <p className="mt-1 text-sm text-[#9aa1b4]">
-                Please wait while AI analyzes your interview.
-              </p>
-            </div>
-          )}
-
-          {/* Evaluation Error / Retry */}
-          {evaluationError && !evaluation && !isComplete && (
-            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-6 w-6 text-red-400" />
-              </div>
-
-              <h3 className="text-lg font-semibold text-white">
-                Evaluation Failed
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-                Your interview answers are safely saved, but we couldn't
-                generate your evaluation right now.
-              </p>
-
-              <button
-                onClick={finishInterview}
-                disabled={isEvaluating || isOffline}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isEvaluating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating Evaluation...
-                  </>
-                ) : (
-                  "Retry Evaluation"
-                )}
-              </button>
-
-              {isOffline && (
-                <p className="mt-3 text-xs text-red-300">
-                  Internet connection lost. Reconnect and try again.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Evaluation Loading */}
-          {isEvaluating && (
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-              <p className="mt-3 font-medium text-white">
-                Generating your evaluation...
-              </p>
-
-              <p className="mt-1 text-sm text-[#9aa1b4]">
-                Please wait while AI analyzes your interview.
-              </p>
-            </div>
-          )}
-
-          {/* Evaluation Error / Retry */}
-          {evaluationError && !evaluation && !isComplete && (
-            <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
-              <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-6 w-6 text-red-400" />
-              </div>
-
-              <h3 className="text-lg font-semibold text-white">
-                Evaluation Failed
-              </h3>
-
-              <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#9aa1b4]">
-                Your interview answers are safely saved, but we couldn't
-                generate your evaluation right now.
-              </p>
-
-              <button
-                onClick={finishInterview}
-                disabled={isEvaluating || isOffline}
-                className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#6366f1] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4f46e5] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {isEvaluating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Generating Evaluation...
-                  </>
-                ) : (
-                  "Retry Evaluation"
-                )}
-              </button>
-
-              {isOffline && (
-                <p className="mt-3 text-xs text-red-300">
-                  Internet connection lost. Reconnect and try again.
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Evaluation Loading */}
-          {isEvaluating && (
-            <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-              <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
-
-              <p className="mt-3 font-medium text-white">
-                Generating your evaluation...
-              </p>
-
-              <p className="mt-1 text-sm text-[#9aa1b4]">
-                Please wait while AI analyzes your interview.
-              </p>
-            </div>
-          )}
+    {isOffline && (
+      <p className="mt-3 text-xs text-red-300">
+        Internet connection lost. Reconnect and try again.
+      </p>
+    )}
+  </div>
+)}
 
           {/* Existing Evaluation */}
           {evaluation && (
