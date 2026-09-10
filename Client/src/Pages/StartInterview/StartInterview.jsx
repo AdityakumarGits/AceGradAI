@@ -585,7 +585,7 @@ export default function StartInterview() {
     }
 
     if (isOffline) {
-      setErrorMsg("Internet connection available nahi hai. Please reconnect.");
+      setErrorMsg("Internet connection lost. Please reconnect.");
       return;
     }
 
@@ -622,7 +622,7 @@ export default function StartInterview() {
         text,
       });
 
-      console.log("🔊 TTS Backend Response:", response?.data);
+      console.log(" TTS Backend Response:", response?.data);
 
       const audioBase64 =
         response?.data?.data?.audioContent ||
@@ -953,7 +953,7 @@ const playBackendAudio = (
     }
 
     if (isOffline) {
-      setErrorMsg("Internet connection available nahi hai.");
+      setErrorMsg("Internet connection lost");
 
       return;
     }
@@ -993,7 +993,7 @@ const playBackendAudio = (
         console.error("❌ MediaRecorder error:", event);
         hasStartedRecordingRef.current = false;
         setIsRecording(false);
-        setErrorMsg("Audio recording mein problem aayi.");
+        setErrorMsg("Audio recording problem.");
       };
 
       recorder.start();
@@ -1089,7 +1089,7 @@ const playBackendAudio = (
         const silenceDuration = Date.now() - silenceStartedAt;
 
         if (silenceDuration >= SILENCE_DURATION) {
-          console.log("🔇 3 seconds silence detected after speech.");
+          console.log(" 3 seconds silence detected after speech.");
 
           stopRecording();
 
@@ -1156,7 +1156,7 @@ const playBackendAudio = (
 
     audioChunksRef.current = [];
 
-    console.log("🎤 FINAL AUDIO:", {
+    console.log(" FINAL AUDIO:", {
       blobSize: audioBlob.size,
       blobType: audioBlob.type,
       recorderMimeType: mimeType,
@@ -1278,7 +1278,7 @@ const playBackendAudio = (
         speakQuestion(nextQuestionText);
       }
     } catch (error) {
-      console.error("❌ Submit Answer Error:", error);
+      console.error(" Submit Answer Error:", error);
 
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
@@ -1317,7 +1317,7 @@ const playBackendAudio = (
       return;
     }
 
-    console.log("🔄 Retrying failed answer:", {
+    console.log(" Retrying failed answer:", {
       questionIndex: failedAnswer.questionIndex,
       interviewId: failedAnswer.interviewId,
     });
@@ -1336,7 +1336,7 @@ const playBackendAudio = (
 
     if (isOffline) {
       setErrorMsg(
-        "Internet connection lost. Interview complete nahi ho sakta. Please reconnect.",
+        "Internet connection lost. Please reconnect.",
       );
 
       return;
@@ -1574,7 +1574,7 @@ const playBackendAudio = (
 
       {isOffline && (
         <div className="mx-6 mt-4 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-4 py-2 text-sm text-yellow-300">
-          Internet connection lost. Your active interview session is محفوظ है.
+          Internet connection lost. Your active interview session is saved .
           Reconnect to continue.
         </div>
       )}
