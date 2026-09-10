@@ -74,6 +74,8 @@ export default function StartInterview() {
   // Prevent online event from triggering multiple recoveries
   const reconnectingRef = useRef(false);
   const questionPlaybackRef = useRef(null);
+  const currentQuestionIndexRef = useRef(0);
+  const interviewIdRef = useRef("");
 
 
   useEffect(() => {
@@ -184,13 +186,13 @@ export default function StartInterview() {
     setErrorMsg(null);
 
     try {
-      console.log("♻️ Recovering interview:", savedInterviewID);
+      console.log(" Recovering interview:", savedInterviewID);
 
       const response = await API.get(
         `/interview/getInterviewDetails/${savedInterviewID}`,
       );
 
-      console.log("♻️ Recovery response:", response?.data);
+      console.log(" Recovery response:", response?.data);
 
       const interview = response?.data?.data?.interview;
 
@@ -203,9 +205,9 @@ export default function StartInterview() {
       // -------------------------------------------------------
 
       if (interview.status === "completed") {
-        console.log("✅ Recovered interview is already completed.");
-
-        setInterviewID(interview._id);
+        console.log(" Recovered interview is already completed.");
+interviewIdRef.current = interview._id;
+setInterviewID(interview._id);
         setQuestions(
           Array.isArray(interview.questions) ? interview.questions : [],
         );
@@ -223,7 +225,7 @@ export default function StartInterview() {
       // -------------------------------------------------------
 
       if (interview.status === "abandoned") {
-        console.log("⚠️ Recovered interview is abandoned.");
+        console.log(" Recovered interview is abandoned.");
 
         clearActiveInterview();
 
@@ -278,7 +280,7 @@ export default function StartInterview() {
         });
 
         const result = response?.data?.data;
-
+interviewIdRef.current = interview._id;
         setInterviewID(interview._id);
         setQuestions(recoveredQuestions);
         setEvaluation(result?.evaluation || null);
@@ -294,9 +296,10 @@ export default function StartInterview() {
       // -------------------------------------------------------
       // RESTORE ACTIVE INTERVIEW
       // -------------------------------------------------------
-
+      interviewIdRef.current = interview._id;
       setInterviewID(interview._id);
       setQuestions(recoveredQuestions);
+      currentQuestionIndexRef.current = nextQuestionIndex;
       setCurrentQuestionIdx(nextQuestionIndex);
 
       hasWelcomedRef.current = true;
@@ -444,8 +447,10 @@ export default function StartInterview() {
       // -------------------------------------------------------
 
       saveActiveInterview(interview._id);
+      interviewIdRef.current = interview._id;
       setInterviewID(interview._id);
       setQuestions(interview.questions);
+      currentQuestionIndexRef.current = 0;
       setCurrentQuestionIdx(0);
 
       console.log("✅ New interview session started.");
@@ -616,7 +621,7 @@ export default function StartInterview() {
         audioUrlRef.current = null;
       }
 
-      console.log("🔊 TTS Request:", text);
+      console.log(" TTS Request:", text);
 
       const response = await API.post("/interview/textToSpeech", {
         text,
@@ -633,7 +638,7 @@ export default function StartInterview() {
         response?.data?.audio;
 
       if (!audioBase64) {
-        console.error("❌ Complete TTS response:", response?.data);
+        console.error(" Complete TTS response:", response?.data);
 
         throw new Error("TTS audio data missing from backend response.");
       }
@@ -1183,14 +1188,15 @@ const playBackendAudio = (
 
     const answerData = retryData || {
       audioBlob,
-      questionIndex: currentQuestionIdx,
-      interviewId: interviewID,
+      questionIndex: currentQuestionIndexRef.current,
+       interviewId: interviewIdRef.current,
     };
 
     const { audioBlob: pendingAudio, questionIndex, interviewId } = answerData;
     // ---------------------------------------------
     // 1. Basic validation
     // ---------------------------------------------
+   // const interviewId = interviewIdRef.current;
     if (!interviewId) {
       setErrorMsg("Interview session missing. Please recover the interview.");
       return;
@@ -1259,6 +1265,7 @@ const playBackendAudio = (
         await finishInterview();
         return;
       }
+      currentQuestionIndexRef.current = nextQuestion.questionIndex;
       setCurrentQuestionIdx(nextQuestion.questionIndex);
 
       const nextQuestionText = nextQuestion.question || "";
@@ -1294,7 +1301,7 @@ const playBackendAudio = (
       setHasFailedAnswer(true);
       setErrorMsg(
         error.response?.data?.message ||
-          "Answer submit nahi ho paya. Please retry.",
+          "Answer doesn't save . Please retry.",
       );
     } finally {
       isSubmittingRef.current = false;
@@ -1330,9 +1337,10 @@ const playBackendAudio = (
   // =========================================================
 
   const finishInterview = async () => {
-    if (!interviewID) {
-      return;
-    }
+     const interviewId = interviewIdRef.current;
+  if (!interviewId) {
+  return;
+}
 
     if (isOffline) {
       setErrorMsg(
@@ -1346,10 +1354,10 @@ const playBackendAudio = (
       setErrorMsg(null);
       setEvaluationError(false);
       setIsEvaluating(true);
-      console.log("🏁 Ending interview:", interviewID);
-      const response = await API.post("/interview/endInterview", {
-        interviewId: interviewID,
-      });
+    console.log("🏁 Ending interview:", interviewId);
+  const response = await API.post("/interview/endInterview", {
+  interviewId,
+});
 
       console.log("📊 Interview Evaluation:", response.data);
       const result = response?.data?.data;
@@ -1362,16 +1370,14 @@ const playBackendAudio = (
       console.error("❌ End Interview Error:", error);
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
+
       setEvaluationError(true);
       setErrorMsg(
         error.response?.data?.message ||
           "We couldn't generate your evaluation. Your answers are safely saved. Please retry.",
       );
 
-      // IMPORTANT:
-      // Do NOT clear active interview here.
-      // If evaluation API fails, refresh can recover
-      // the interview again.
+  
     } finally {
       setIsEvaluating(false);
     }

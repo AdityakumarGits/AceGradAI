@@ -17,7 +17,7 @@ const VerifyOTP = () => {
   useEffect(() => {
     if (!email) {
       candidateToast.error("Session expired. Please sign up again.");
-      navigate("/signup");
+     navigate("/candidatesignup");;
     }
   }, [email, navigate]);
   useEffect(() => {
@@ -66,9 +66,9 @@ const VerifyOTP = () => {
   //resend OTP
   const handleResendOTP = async () => {
     try {
-      const response = await API.post("auth/resendOtp", {
-        email,
-      });
+      const response = await API.post("auth/resend-otp", {
+  email,
+});
       candidateToast.success("OTP Send To Your Email");
       setTimer(60);
       console.log(response.data);

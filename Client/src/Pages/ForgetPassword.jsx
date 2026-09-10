@@ -89,14 +89,12 @@ const ForgotPassword = () => {
     try {
       setResetLoading(true);
 
-     const response = await API.post(
-  "auth/forget-password",
-  {
-    email: email.trim(),
-    otp,
-    password,
-  }
-);
+   API.post("auth/reset-password", {
+  email: email.trim(),
+  otp,
+  password,
+});
+   
 
       console.log("Reset Password Response:", response.data);
       candidateToast.success("Password updated successfully");
