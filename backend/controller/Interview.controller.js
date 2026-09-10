@@ -297,12 +297,17 @@ export const verifyInterviewOtp = async (req, res, next) => {
   try {
     const { interviewId, otp } = req.body;
 
-    if (!interviewId || !/^\d{6}$/.test(otp.toString())) {
-      return res.status(400).json({
-        status: "fail",
-        message: "Interview ID and valid 6-digit OTP are required",
-      });
-    }
+   if (
+  !interviewId ||
+  otp === undefined ||
+  otp === null ||
+  !/^\d{6}$/.test(String(otp))
+) {
+  return res.status(400).json({
+    status: "fail",
+    message: "Interview ID and valid 6-digit OTP are required",
+  });
+}
 
     const interview = await Interview.findOne({
       _id: interviewId,
@@ -379,7 +384,6 @@ export const textToSpeech = async (req, res, next) => {
     }
 
     const audioData = await synthesizeSpeech(text);
-
     const audioBase64 = Buffer.from(audioData).toString("base64");
 
     return res.status(200).json({
@@ -506,14 +510,11 @@ export const submitGuestAnswer = async (req, res, next) => {
 
     interview.answers.push({
       questionIndex: parsedQuestionIndex,
-
       questionText,
-
       userAnswer: userAnswer.trim(),
     });
 
     await interview.save();
-
     return res.status(200).json({
       status: "success",
       message: "Guest answer submitted successfully",
@@ -622,11 +623,11 @@ export const submitAnswer = async (req, res, next) => {
       originalname: req.file.originalname,
     });
 
-    console.log("🎤 Audio buffer size:", req.file.buffer.length);
-    console.log("🎤 MIME:", req.file.mimetype);
-    console.log("🎤 FILE SIZE:", req.file.size);
+    console.log(" Audio buffer size:", req.file.buffer.length);
+    console.log(" MIME:", req.file.mimetype);
+    console.log(" FILE SIZE:", req.file.size);
     console.log(
-      "🎤 BUFFER HEADER:",
+      "BUFFER HEADER:",
       req.file.buffer.subarray(0, 20).toString("hex"),
     );
 
@@ -781,9 +782,7 @@ export const endInterview = async (req, res, next) => {
 
     const qaPayload = interview.answers.map((item) => ({
       questionIndex: item.questionIndex,
-
       questionText: item.questionText,
-
       userAnswer: item.userAnswer,
     }));
 
@@ -792,7 +791,6 @@ export const endInterview = async (req, res, next) => {
     // --------------------------------------------------
 
     console.log(" Starting AI interview evaluation...");
-
     const aiEvaluationReport = await evaluateInterviewSession(qaPayload);
 
     // --------------------------------------------------
@@ -962,7 +960,6 @@ export const getInterviewReport = async (req, res, next) => {
     });
   } catch (error) {
     console.error(" Get Interview Report Error:", error);
-
     return next(error);
   }
 };

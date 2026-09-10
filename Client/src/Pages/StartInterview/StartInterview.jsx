@@ -1450,7 +1450,18 @@ const playBackendAudio = (
         <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 text-center shadow-2xl backdrop-blur-xl">
           <h2 className="text-3xl font-bold text-white">Interview Complete!</h2>
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
-
+  
+  {isEvaluating && !evaluation && !evaluationError && (
+  <div className="mt-8 text-center">
+    <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
+    <p className="mt-3 text-white">
+      Generating your evaluation...
+    </p>
+    <p className="mt-1 text-sm text-[#9aa1b4]">
+      Please wait a moment while we analyze your interview.
+    </p>
+  </div>
+)}
       {/* Evaluation Error / Retry */}
 {evaluationError && !evaluation && (
   <div className="mt-8 rounded-2xl border border-red-500/20 bg-red-500/10 p-6 text-center">
@@ -1579,7 +1590,7 @@ const playBackendAudio = (
           <div className="ml-3 flex items-center gap-2">
             {/* =================================================
           RETRY FAILED ANSWER
-      ================================================= */}
+                ================================================= */}
             {hasFailedAnswer &&
               !isSpeaking &&
               !isRecording &&
@@ -1595,8 +1606,8 @@ const playBackendAudio = (
               )}
 
             {/* =================================================
-          RETRY AI QUESTION / TTS
-      ================================================= */}
+                  RETRY AI QUESTION / TTS
+               ================================================= */}
             {!hasFailedAnswer &&
               !isSpeaking &&
               !isRecording &&
