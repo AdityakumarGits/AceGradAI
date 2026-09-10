@@ -98,7 +98,6 @@ const Hero = () => {
           <div className="rounded-3xl border border-white/10 bg-[#0d1538]/75 p-6 backdrop-blur-xl transition duration-300 hover:-translate-y-2 hover:border-indigo-400 hover:shadow-[0_0_40px_rgba(99,102,241,0.25)]">
 
             <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full border border-indigo-500/30 bg-indigo-500/10">
-
               <MessageSquareText
                 size={30}
                 className="text-indigo-400"

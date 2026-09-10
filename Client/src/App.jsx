@@ -1,7 +1,6 @@
-// src/App.jsx
+
 
 import { Routes, Route } from "react-router-dom";
-
 import Home from "./Pages/Home";
 import CandidateSignup from "./Pages/CandidateSignup";
 import CandidateLogin from "./Pages/CandidateLogin";

@@ -1,10 +1,11 @@
 import {ShieldCheck, Mail, ArrowRight, ArrowLeft, RefreshCw } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { candidateToast } from "../utils/toast";
-import axios from "axios";
-
 import { useEffect, useState, useRef } from "react";
 import API from "../services/api";
+
+
+
 
 const VerifyOTP = () => {
   const navigate = useNavigate();
@@ -44,9 +45,12 @@ const VerifyOTP = () => {
         email,
         otp: otp.join(""),
       });
+
       candidateToast.success("OTP verified successfully.");
-      navigate("/login");
+    navigate("/candidatelogin");
+
       console.log(response.data);
+
     } catch (error) {
       console.error(error);
       candidateToast.error(
@@ -56,10 +60,13 @@ const VerifyOTP = () => {
       setLoading(false);
     }
   };
+
+
+
   //resend OTP
   const handleResendOTP = async () => {
     try {
-      const response = await API.post("/auth/resendOtp", {
+      const response = await API.post("auth/resendOtp", {
         email,
       });
       candidateToast.success("OTP Send To Your Email");
@@ -164,6 +171,7 @@ const VerifyOTP = () => {
           {/* Verify Button */}
 
           <button
+           type="button"
             onClick={handleVerifyOTP}
             disabled={loading}
             className="mt-10 flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-r from-[#d90000] to-indigo-600 py-4 text-lg font-semibold text-white transition-all hover:scale-[1.02] hover:shadow-[0_0_35px_rgba(217,0,0,.35)]"
@@ -198,7 +206,7 @@ const VerifyOTP = () => {
           {/* Back */}
 
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/candidatesignup")}
             className="mt-8 flex w-full items-center justify-center gap-2 text-[#eaecf0]/60 transition hover:text-white"
           >
             <ArrowLeft size={18} />

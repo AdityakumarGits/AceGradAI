@@ -90,7 +90,7 @@ const ForgotPassword = () => {
       setResetLoading(true);
 
      const response = await API.post(
-  "auth/reset-password",
+  "auth/forget-password",
   {
     email: email.trim(),
     otp,
@@ -99,9 +99,7 @@ const ForgotPassword = () => {
 );
 
       console.log("Reset Password Response:", response.data);
-
       candidateToast.success("Password updated successfully");
-
       navigate("/candidatelogin");
     } catch (error) {
       console.error("Reset Password Error:", error);
@@ -120,9 +118,7 @@ const ForgotPassword = () => {
 
       {/* Background Glow */}
       <div className="absolute -top-40 -left-32 h-[380px] w-[380px] rounded-full bg-[#d90000]/20 blur-[170px]" />
-
       <div className="absolute bottom-0 right-0 h-[420px] w-[420px] rounded-full bg-indigo-600/20 blur-[220px]" />
-
       <div className="relative w-full max-w-lg">
 
         {/* Card */}
