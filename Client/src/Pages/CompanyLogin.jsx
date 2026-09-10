@@ -1,4 +1,4 @@
-import axios from "axios";
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { companyToast } from "../utils/toast";
@@ -8,8 +8,7 @@ const CompanyLogin = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  // const [forgetPassword,setforgetPassword]=useState("");
-  const [loading, setLoading] = useState(false);
+
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -42,30 +41,7 @@ const CompanyLogin = () => {
       setLoading(false);
     }
   };
-  const handleForgotPassword = async () => {
-    if (!email) {
-      return companyToast.error("Please enter your email address first.");
-    }
-
-    try {
-      setLoading(true);
-
-      const response = await API.post("auth/forgot-password", {
-        email: email.trim(),
-      });
-
-      companyToast.success(
-        response.data.message || "Password reset OTP sent to your email.",
-      );
-    } catch (error) {
-      console.error(error);
-      companyToast.error(
-        error.response?.data?.message || "Failed to send reset link.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+ 
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-[#FAF7F3] via-[#F0E4D3] to-[#DCC5B2] flex items-center justify-center p-6">
