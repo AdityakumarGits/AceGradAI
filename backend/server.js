@@ -15,5 +15,5 @@ const server = http.createServer(app);
 
 // Server Start Listen
 server.listen(port, () => {
-    console.log(`🚀 AceGrad Server booted and listening on port ${port}!`);
+    console.log(` AceGrad Server booted and listening on port ${port}!`);
 });

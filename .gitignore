@@ -1,0 +1,53 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build
+dist/
+build/
+.next/
+out/
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary
+*.tmp
+*.temp
+.cache/
+.temp/
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Vite
+.vite/
+
+# User uploads
+uploads/
+*.webm
+*.wav
+*.mp3
+
+# Local databases
+*.sqlite
+*.sqlite3
