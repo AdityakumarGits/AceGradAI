@@ -1,6 +1,6 @@
 
 import express from"express";
-import { signUp,login, verifyOTP, SendOtp, resendOtp, forgetPassword, resetPassword } from "../controller/user.controller.js"; 
+import { signUp,login, verifyOTP, SendOtp, resendOtp, forgetPassword, resetPassword,logout } from "../controller/user.controller.js"; 
 const route=express.Router();
 
 
@@ -22,7 +22,7 @@ route.post("/verify-otp", otpLimiter, verifyOTP);
 route.post("/login",login);
 route.post("/forget-password", otpLimiter, forgetPassword);
 route.post("/reset-password",resetPassword);
-//route.post("/logout", protect, logout);
+route.post("/logout", protect, logout);
 
 
 

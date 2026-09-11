@@ -1,6 +1,4 @@
-// src/Pages/candidateDashboard/HistorySection.jsx
 
-import React from "react";
 import { CalendarDays, FileText, ArrowRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 

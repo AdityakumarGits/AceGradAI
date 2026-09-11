@@ -14,6 +14,7 @@
   "dependencies": {
     "@deepgram/sdk": "^5.8.0",
     "@elevenlabs/elevenlabs-js": "^2.64.0",
+    "@getbrevo/brevo": "^6.0.3",
     "@google/genai": "^2.10.0",
     "axios": "^1.19.0",
     "bcrypt": "^6.0.0",
@@ -26,7 +27,6 @@
     "mongoose": "^9.7.2",
     "multer": "^2.2.0",
     "nodemon": "^3.1.14",
-    "pdf-parse": "^2.4.5",
-    "resend": "^6.18.0"
+    "pdf-parse": "^2.4.5"
   }
 }

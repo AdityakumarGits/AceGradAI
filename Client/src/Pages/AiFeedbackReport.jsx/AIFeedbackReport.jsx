@@ -29,7 +29,9 @@ export default function AIFeedbackReport() {
        * ke according match karna.
        */
 
-      const response = await API.get(`/interview/getInterview/${interviewId}`);
+      const response = await API.get(
+  `/interview/${interviewId}/report`
+);
 
       const data =
         response?.data?.data?.interview ||
@@ -81,13 +83,13 @@ export default function AIFeedbackReport() {
             We couldn't find the requested interview report.
           </p>
 
-          <button
-            type="button"
-            onClick={() => navigate("/candidatedashboard")}
-            className="mt-6 rounded-xl bg-gradient-to-r from-[#d90000] to-indigo-600 px-6 py-3 font-semibold text-white"
-          >
-            Back to Dashboard
-          </button>
+         <button
+  onClick={() => navigate("/candidatedashboard")}
+  className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-medium text-gray-200 transition hover:bg-white/10"
+>
+  <ArrowLeft size={18} />
+  Back to Dashboard
+</button>
         </div>
       </div>
     );

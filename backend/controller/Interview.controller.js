@@ -864,6 +864,7 @@ export const getAllInterviews = async (req, res, next) => {
   try {
     let query = {
       userId: req.user.id,
+      status: "completed",
     };
 
     if (req.user.role === "recruiter") {

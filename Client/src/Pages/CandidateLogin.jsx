@@ -54,7 +54,7 @@ const CandidateLogin = () => {
 
   try {
     setLoading(true);
-  const response = await API.post( "auth/forgot-password",{ email });
+  const response = await API.post( "auth/forget-password",{ email });
 
     candidateToast.error(response.data.message || "Password reset link sent to your email.");
   } catch (error) {

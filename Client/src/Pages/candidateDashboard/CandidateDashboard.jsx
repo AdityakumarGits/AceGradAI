@@ -1,4 +1,4 @@
-// src/Pages/candidateDashboard/CandidateDashboard.jsx
+
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,6 +19,7 @@ import {
   LogOut,
   UserCircle2,
   Rocket,
+  Home,
 } from "lucide-react";
 
 import { candidateToast } from "../../utils/toast";
@@ -293,10 +294,12 @@ export default function CandidateDashboard() {
 
           </div>
 
-          <div className="flex items-center gap-2 rounded-full border border-[#d90000]/30 bg-[#d90000]/10 px-5 py-3 font-semibold text-[#d90000]">
-            <Flame size={18} />
-            5 Day Streak
-          </div>
+          <button 
+           onClick={() => navigate("/")}
+          className="flex items-center gap-2 rounded-full border border-[#d90000]/30 bg-[#d90000]/10 px-5 py-3 font-semibold text-[#d90000]">
+             <Home size={19} />
+            <span>Home</span>
+          </button>
 
         </header>
 

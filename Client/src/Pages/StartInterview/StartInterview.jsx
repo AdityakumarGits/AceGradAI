@@ -1256,15 +1256,14 @@ const playBackendAudio = (
       // ---------------------------------------------
       failedAnswerRef.current = null;
       setHasFailedAnswer(false);
+      
       const result = response?.data?.data;
       const nextQuestion = result?.nextQuestion;
 
-      const isLastQuestion = questionIndex + 1 >= questions.length;
-
-      if (isLastQuestion || !nextQuestion) {
-        await finishInterview();
-        return;
-      }
+   if (!nextQuestion) {
+  await finishInterview();
+  return;
+}
       currentQuestionIndexRef.current = nextQuestion.questionIndex;
       setCurrentQuestionIdx(nextQuestion.questionIndex);
 
