@@ -1,11 +1,9 @@
 //import { Mail, Lock } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import API from "../services/api"
+import API from "../services/api";
 import { candidateToast } from "../utils/toast";
 import { useAuth } from "../context/AuthContext";
-
-
 
 const CandidateLogin = () => {
   const navigate = useNavigate();
@@ -13,7 +11,6 @@ const CandidateLogin = () => {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [forgetPassword,setforgetPassword]=useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e) => {
@@ -25,13 +22,10 @@ const CandidateLogin = () => {
 
     try {
       setLoading(true);
-      const response = await API.post(
-        "auth/login",
-        {
-          email,
-          password,
-        },
-      );
+      const response = await API.post("auth/login", {
+        email,
+        password,
+      });
       const token = response.data?.token;
       const user = response.data?.data?.user;
       console.log("User:", user);
@@ -47,23 +41,6 @@ const CandidateLogin = () => {
       setLoading(false);
     }
   };
-  const handleForgotPassword = async () => {
-  if (!email) {
-    return candidateToast.error("Please enter your email address first.");
-  }
-
-  try {
-    setLoading(true);
-  const response = await API.post( "auth/forget-password",{ email });
-
-    candidateToast.error(response.data.message || "Password reset link sent to your email.");
-  } catch (error) {
-    console.error(error);
-    candidateToast.error(error.response?.data?.message || "Failed to send reset link.");
-  } finally {
-    setLoading(false);
-  }
-};
 
   return (
     //  <div className="min-h-screen  bg-[#070f2b] flex items-center justify-center p-6">
@@ -92,7 +69,7 @@ const CandidateLogin = () => {
             </label>
 
             <input
-            required
+              required
               type="email"
               value={email}
               onChange={(e) => {
@@ -110,7 +87,7 @@ const CandidateLogin = () => {
             </label>
 
             <input
-            required
+              required
               type="password"
               value={password}
               onChange={(e) => {
@@ -121,9 +98,9 @@ const CandidateLogin = () => {
             />
           </div>
           <div className="flex justify-end">
-            <button onClick={handleForgotPassword}
+            <button
+              onClick={() => navigate("/forgot-password")}
               type="button"
-            //  onClick={()=>{navigate("/forget-password")}}
               className="text-sm text-indigo-400 hover:text-red-500 transition"
             >
               Forgot Password?

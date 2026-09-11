@@ -105,7 +105,7 @@ const CompanyLogin = () => {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={() => navigate("/forget-password")}
+              onClick={() => navigate("/forgot-password")}
               className="text-sm font-medium text-[#C98772] hover:text-[#B46A54]"
             >
               Forgot Password?

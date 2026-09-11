@@ -27,89 +27,82 @@ const ForgotPassword = () => {
 
   // Send OTP
   const handleSendOtp = async (e) => {
-    e?.preventDefault();
+  e?.preventDefault();
 
-    if (!email.trim()) {
-      candidateToast.error("Please enter your email address");
-      return;
-    }
+  if (!email.trim()) {
+    candidateToast.error("Please enter your email address");
+    return;
+  }
 
-    try {
-      setOtpLoading(true);
+  try {
+    setOtpLoading(true);
 
-      const otpResponse = await API.post("auth/send-otp", {
-        email: email.trim(),
-      });
+    const otpResponse = await API.post("auth/forget-password", {
+      email: email.trim(),
+    });
 
-      candidateToast.success("OTP sent to your email");
+    candidateToast.success("OTP sent to your email");
 
-      console.log("OTP Response:", otpResponse.data);
-    } catch (error) {
-      console.error("Send OTP Error:", error);
+    console.log("OTP Response:", otpResponse.data);
+  } catch (error) {
+    console.error("Send OTP Error:", error);
 
-      candidateToast.error(
-        error.response?.data?.message || "Failed to send OTP"
-      );
-    } finally {
-      setOtpLoading(false);
-    }
-  };
+    candidateToast.error(
+      error.response?.data?.message || "Failed to send OTP"
+    );
+  } finally {
+    setOtpLoading(false);
+  }
+};
 
   // Reset Password
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (
-      !email.trim() ||
-      !password ||
-      !otp ||
-      !confirmPassword
-    ) {
-      candidateToast.error("All fields are required");
-      return;
-    }
+  if (!email.trim() || !password || !otp || !confirmPassword) {
+    candidateToast.error("All fields are required");
+    return;
+  }
 
-    if (otp.length !== 6) {
-      candidateToast.error("Please enter a valid 6-digit OTP");
-      return;
-    }
+  if (otp.length !== 6) {
+    candidateToast.error("Please enter a valid 6-digit OTP");
+    return;
+  }
 
-    if (password.length < 8) {
-      candidateToast.error(
-        "Password must be at least 8 characters"
-      );
-      return;
-    }
+  if (password.length < 8) {
+    candidateToast.error("Password must be at least 8 characters");
+    return;
+  }
 
-    if (password !== confirmPassword) {
-      candidateToast.error("Passwords do not match");
-      return;
-    }
+  if (password !== confirmPassword) {
+    candidateToast.error("Passwords do not match");
+    return;
+  }
 
-    try {
-      setResetLoading(true);
+  try {
+    setResetLoading(true);
 
-   API.post("auth/reset-password", {
-  email: email.trim(),
-  otp,
-  password,
-});
-   
+    const response = await API.post("auth/reset-password", {
+      email: email.trim(),
+      otp,
+      password,
+    });
 
-      console.log("Reset Password Response:", response.data);
-      candidateToast.success("Password updated successfully");
-      navigate("/candidatelogin");
-    } catch (error) {
-      console.error("Reset Password Error:", error);
+    console.log("Reset Password Response:", response.data);
 
-      candidateToast.error(
-        error.response?.data?.message ||
-          "Failed to reset password"
-      );
-    } finally {
-      setResetLoading(false);
-    }
-  };
+    candidateToast.success("Password updated successfully");
+
+    navigate("/candidatelogin");
+  } catch (error) {
+    console.error("Reset Password Error:", error);
+
+    candidateToast.error(
+      error.response?.data?.message || "Failed to reset password"
+    );
+  } finally {
+    setResetLoading(false);
+  }
+};
 
   return (
     <div className="relative h-screen overflow-hidden bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] flex items-center justify-center px-4 py-10">

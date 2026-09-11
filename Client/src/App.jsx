@@ -1,12 +1,9 @@
-
-
 import { Routes, Route } from "react-router-dom";
 import Home from "./Pages/Home";
 import CandidateSignup from "./Pages/CandidateSignup";
 import CandidateLogin from "./Pages/CandidateLogin";
 import CompanySignup from "./Pages/CompanySignup";
 import CompanyLogin from "./Pages/CompanyLogin";
-import ForgetPassword from "./Pages/ForgetPassword";
 import CandidateDashboard from "./Pages/candidateDashboard/CandidateDashboard";
 import CompanyDashboard from "./Pages/CompanyDashboard";
 import Contact from "./Pages/Contact";
@@ -15,6 +12,7 @@ import AIFeedbackReport from "./Pages/AiFeedbackReport.jsx/AIFeedbackReport";
 import InterviewSetup from "./Pages/InterviewSetup/InterviewSetup";
 import VerifyOTP from "./Pages/VerifyOTP";
 import PrivateRoute from "./context/PrivateRoute";
+import ForgotPassword from "./Pages/ForgotPassword";
 
 const App = () => {
   return (
@@ -59,9 +57,9 @@ const App = () => {
       />
 
       <Route
-        path="/forget-password"
-        element={<ForgetPassword />}
-      />
+  path="/forgot-password"
+  element={<ForgotPassword />}
+/>
 
       {/* =====================================================
           PROTECTED CANDIDATE ROUTES
