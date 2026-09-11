@@ -1,824 +1,464 @@
-🚀 AceGrad AI - Advanced AI-Powered Interview Backend Engine
-
-Welcome to the AceGrad AI Backend Engine. This repository contains the backend for an AI-powered interview system built with Node.js, Express, MongoDB, Google Gemini 2.5 Flash, Deepgram, Multer, and PDF parsing.
-
-The system currently supports AI-powered candidate self-practice interviews through:
-
-Job Title + Job Description
-
-Selected Topics
-
-Resume PDF
-
-It also contains the backend foundation for Recruiter Campaign interviews (B2B) with candidate access through a secure 6-digit OTP.
-
-🏛️ Architecture & System Design Flow
-
-[React Frontend / Postman]
-             │
-             │ HTTP Request
-             ▼
-     [Express Router]
-             │
-             ▼
-     [Protect Middleware]
-             │
-             ▼
-        [Controller]
-             │
-       ┌─────┼───────────────────┐
-       │     │                   │
-       ▼     ▼                   ▼
-      JD   Topics              Resume
-       │     │                   │
-       │     │             [Multer Memory]
-       │     │                   │
-       │     │             [PDF Parser]
-       │     │                   │
-       └─────┴───────────────────┘
-                     │
-                     ▼
-              [Gemini Service]
-                     │
-                     ▼
-          Google Gemini 2.5 Flash
-                     │
-                     ▼
-              5 AI Questions
-                     │
-                     ▼
-             [Interview Model]
-                     │
-                     ▼
-                [MongoDB]
+AceGrad AI — Backend
 
+Backend API and AI interview engine for AceGrad AI, an AI-powered interview practice and recruiter screening platform.
 
-Candidate Answer
-       │
-       ▼
-  Audio Upload
-       │
-       ▼
-    Multer
-       │
-       ▼
-    Deepgram
-       │
-       ▼
- Speech-to-Text
-       │
-       ▼
- Interview Answer
-       │
-       ▼
-    MongoDB
+Overview
 
+The backend is built with Node.js and Express and provides:
 
-End Interview
-       │
-       ▼
- Gemini Evaluation
-       │
-       ▼
- Score + Feedback + Skills
+JWT authentication and authorization
 
-The backend follows a Layered MVC-style architecture, keeping API routing, request handling, AI communication, database models, and middleware separated.
+Candidate and recruiter accounts
 
-Folder Responsibilities
+OTP verification and password reset
 
-model/ → MongoDB schemas and validation
+Brevo transactional email
 
-routes/ → API endpoint mappings
+AI-generated interview questions
 
-controller/ → Request handling and interview lifecycle logic
+Voice answer transcription with Deepgram
 
-services/ → Google Gemini AI communication
+AI interviewer speech with Azure Speech
 
-middlewares/ → Authentication and request protection
+AI evaluation with Google Gemini 2.5 Flash
 
-config/ → External service configuration
+Interview session management and recovery
 
-utils/ → Reusable backend utilities and application errors
+Interview reports and history
 
-🛠️ Tech Stack
+Recruiter campaign screening
 
-Runtime: Node.js (ES Modules)
+File upload validation
 
-Framework: Express.js
+API rate limiting
 
-Database: MongoDB + Mongoose
+Tech Stack
 
-AI Engine: Google Gemini 2.5 Flash
+Technology
 
-AI SDK: @google/genai
+Purpose
 
-Speech-to-Text: Deepgram SDK
+Node.js
 
-Resume Processing: pdf-parse
+Runtime
 
-File Upload: Multer
+Express.js
 
-Authentication: JWT
+REST API
 
-Password Encryption: bcrypt
+MongoDB
 
-CORS: Express CORS Middleware
+Database
 
-Rate Limiting: express-rate-limit
+Mongoose
 
-Email: Resend
+ODM
 
-HTTP Client: Axios
+JWT
 
-Environment Configuration: dotenv
+Authentication
 
-⚡ Quick Start
+bcrypt
 
-Prerequisites
+Password hashing
 
-Node.js 18+
+Google Gemini 2.5 Flash
 
-MongoDB (Local or MongoDB Atlas)
+Question generation and evaluation
 
-Google Gemini API key
+Deepgram
 
-Deepgram API key
+Speech-to-text
 
-1. Clone Repository
+Azure Speech
 
-cd AceGradAI/backend
-npm install
+Text-to-speech
 
-2. Configure Environment Variables
+Brevo
 
-Create a .env file inside the backend root directory.
+OTP email
 
-PORT=5000
+Multer
 
-MONGO_URI=mongodb://127.0.0.1:27017/acegrad_ai
+File/audio uploads
 
-JWT_SECRET=your_jwt_secret
-JWT_EXPIRES_IN=90d
+express-rate-limit
 
-GEMINI_API_KEY=your_gemini_api_key
+Abuse protection
 
-DEEPGRAM_API_KEY=your_deepgram_api_key
+Architecture
 
-Never commit real API keys or secrets to Git.
+Request
+  ↓
+Route
+  ↓
+Middleware
+  ↓
+Controller
+  ↓
+Service / Utility
+  ↓
+Model / Database
+  ↓
+External AI / Email Services
+  ↓
+Response
 
-3. Run Application
+The project follows an MVC-style layered architecture.
 
-Development
+Project Structure
 
-npm start
+backend/
+├── controller/
+├── model/
+├── routes/
+├── middlewares/
+├── services/
+├── utils/
+├── server.js
+├── package.json
+├── .env
+└── .gitignore
 
-The current project uses Nodemon through the start script.
+routes/ — API endpoint definitions
 
-🧠 Interview Generation Engine
+middlewares/ — authentication, protection, rate limiting and request-level processing
 
-AceGrad AI currently supports three different sources for generating interview questions.
+controller/ — request/response and business-flow orchestration
 
-                    questionSource
-                          │
-             ┌────────────┼────────────┐
-             │            │            │
-             ▼            ▼            ▼
-            "jd"       "topics"     "resume"
-             │            │            │
-             ▼            ▼            ▼
-        Job Title +     Selected      Resume
-        Job Description  Topics       PDF
-             │            │            │
-             └────────────┼────────────┘
-                          ▼
-                    Gemini 2.5 Flash
-                          │
-                          ▼
-                   Exactly 5 Questions
+model/ — Mongoose schemas
 
-📡 API Documentation
+services/ — external integrations such as Azure Speech and Brevo
 
-The exact base URL depends on how the routers are mounted in server.js.
+utils/ — reusable helpers such as OTP handling
 
-The examples below assume:
+server.js — application entry point
 
-/api/v1/interview
+Authentication
 
-🔐 Authentication APIs
+Signup → OTP → Verification → Login → JWT → Protected APIs
 
-Signup
+Passwords are hashed with bcrypt. Protected routes use JWT authentication middleware.
 
-POST
+Main authentication endpoints
 
-/api/v1/auth/signup
+POST /auth/signup
+POST /auth/send-otp
+POST /auth/resend-otp
+POST /auth/verify-otp
+POST /auth/login
+POST /auth/forget-password
+POST /auth/reset-password
+POST /auth/logout
 
-Access
+OTP and Brevo
 
-Public
+OTP purposes include:
 
-Example request:
+signup
+login
+forgot-password
 
-{
-  "fullname": "Aditya Sharma",
-  "email": "aditya@example.com",
-  "password": "securepassword123",
-  "role": "candidate"
-}
+Typical flow:
 
-Login
+Controller
+  ↓
+createAndSendOtp()
+  ↓
+Generate OTP
+  ↓
+Save OTP + expiry
+  ↓
+Brevo
+  ↓
+Email
 
-POST
+OTP validity is currently configured for approximately five minutes.
 
-/api/v1/auth/login
+Required Brevo variables:
 
-Access
+BREVO_API_KEY=
+BREVO_SENDER_EMAIL=
+BREVO_SENDER_NAME=AceGrad AI
 
-Public
+Interview Engine
 
-The login endpoint authenticates the user and returns/sets the authentication token according to the application's authentication implementation.
-
-Protected APIs require a valid JWT.
-
-Example:
-
-Authorization: Bearer <token>
-
-🧠 Interview APIs
-
-Protected candidate routes require the protect middleware.
+A practice interview currently contains five questions.
 
 Start Interview
+  ↓
+Generate 5 questions with Gemini
+  ↓
+Welcome audio + Question 1 audio
+  ↓
+Candidate answers
+  ↓
+Deepgram transcription
+  ↓
+Save answer
+  ↓
+Return next question + audio
+  ↓
+Repeat through Question 5
+  ↓
+Gemini evaluation
+  ↓
+Report
 
-POST
+The backend remains the source of truth for interview ID, questions, answers and status.
 
-/api/v1/interview/startInterview
+Voice Pipeline
 
-Access
-
-Protected
-
-The same endpoint supports JD, Topics, and Resume-based interviews.
-
-Because Resume mode accepts a PDF, the endpoint supports multipart/form-data.
-
-1. JD-Based Interview
-
-questionSource = "jd"
-
-Example fields:
-
-questionSource: jd
-jobTitle: MERN Stack Developer
-jobDescription: Requires expertise in Node.js, React, MongoDB and Express.
-experienceLevel: junior
-interviewType: practice
-
-Flow:
-
-Job Title
-     +
-Job Description
-     +
-Experience Level
-     ↓
-Gemini
-     ↓
-5 Technical Questions
-
-2. Topic-Based Interview
-
-questionSource = "topics"
-
-Example:
-
-questionSource: topics
-topics: ["React", "Node.js", "MongoDB"]
-experienceLevel: junior
-interviewType: practice
-
-Flow:
-
-Selected Topics
-       +
-Experience Level
-       ↓
-Gemini
-       ↓
-5 Technical Questions
-
-The selected topics are stored in the topics field of the Interview document.
-
-3. Resume-Based Interview
-
-questionSource = "resume"
-
-Resume mode uses:
-
-multipart/form-data
-
-The PDF field name is:
-
-resume
-
-Example fields:
-
-questionSource: resume
-experienceLevel: junior
-interviewType: practice
-resume: <PDF file>
-
-Flow:
-
-Resume PDF
-    ↓
-Multer Memory Storage
-    ↓
-PDF Buffer
-    ↓
-PDF Text Extraction
-    ↓
-Resume Text
-    ↓
-Gemini
-    ↓
-5 Resume-Based Questions
-
-The resume is processed in memory and the extracted text is used for question generation.
-
-Success Response
-
-The start interview endpoint returns the created interview session and generated questions.
-
-Example:
-
-{
-  "status": "success",
-  "message": "Interview session created successfully",
-  "data": {
-    "interview": {
-      "_id": "6a43af3a34c139954e297af5",
-      "questionSource": "topics",
-      "questions": [
-        "Question 1",
-        "Question 2",
-        "Question 3",
-        "Question 4",
-        "Question 5"
-      ],
-      "status": "pending"
-    },
-    "accessOtp": null
-  }
-}
-
-For campaign interviews, accessOtp contains the generated 6-digit OTP.
-
-🎤 Submit Answer
-
-POST
-
-/api/v1/interview/submitAnswer
-
-Access
-
-Protected
-
-The endpoint accepts the candidate's spoken answer as an audio upload.
-
-Audio field name:
-
-audio
-
-Example request fields:
-
-interviewId: 6a43af3a34c139954e297af5
-questionIndex: 0
-audio: <audio file>
-
-Flow:
-
-Candidate Speaks
-       ↓
-Frontend Audio Recording
-       ↓
-POST /submitAnswer
-       ↓
-Multer Memory Buffer
-       ↓
+Browser MediaRecorder
+  ↓
+WebM / Opus audio
+  ↓
+Backend
+  ↓
 Deepgram
-       ↓
-Speech-to-Text
-       ↓
+  ↓
 Transcript
-       ↓
-Interview.answers
+  ↓
+Save answer
+  ↓
+Next question
+  ↓
+Azure Speech
+  ↓
+Audio returned to browser
 
-The transcript is stored against the corresponding question.
+The frontend does not need access to Deepgram or Azure credentials.
 
-🔊 Text-to-Speech
+Gemini
 
-POST
+Gemini 2.5 Flash is used for:
 
-/api/v1/interview/textToSpeech
+Interview question generation
 
-Access
+Final interview evaluation
 
-Protected
+Evaluation can include:
 
-This endpoint is used for the interview voice experience when converting interview text/questions into speech.
+Overall score
 
-🏁 End Interview
+Technical score
 
-POST
+Communication score
 
-/api/v1/interview/endInterview
+Problem-solving score
 
-Access
+Strengths
 
-Protected
+Weaknesses
 
-The endpoint:
+Feedback summary
 
-Retrieves the interview session.
+Recommended topics
 
-Collects submitted questions and answers.
+Question-wise evaluation
 
-Sends the interview data to Gemini.
+Database
 
-Generates a structured evaluation.
+Main models:
 
-Saves the evaluation.
+User
 
-Marks the interview as completed.
+Stores account information such as:
 
-Example response:
+fullname
+email
+password
+role
+isVerified
 
-{
-  "status": "success",
-  "message": "Interview completed and evaluation generated.",
-  "data": {
-    "evaluation": {
-      "overallScore": 8,
-      "feedbackSummary": "Candidate demonstrated strong technical understanding...",
-      "skillsAssessment": [
-        "Strong: JavaScript fundamentals",
-        "Strong: API development",
-        "Weak: Database optimization"
-      ]
-    },
-    "status": "completed"
-  }
-}
+OTP
 
-🔓 Guest Campaign APIs
+Stores:
 
-These APIs support recruiter-created campaign interviews where invited candidates can participate without normal candidate authentication.
+email
+otp
+purpose
+expiresAt
+attempts
 
-Verify Interview OTP
+Interview
 
-POST
+Stores:
 
-/api/v1/interview/verifyInterviewOtp
-
-Access
-
-Public
-
-Example:
-
-{
-  "interviewId": "6a43af3a34c139954e297af5",
-  "otp": "648219"
-}
-
-The endpoint verifies the candidate's campaign access OTP.
-
-Submit Guest Answer
-
-POST
-
-/api/v1/interview/submitGuestAnswer
-
-Access
-
-Public
-
-Used by candidates participating in recruiter campaign interviews.
-
-📊 Reporting APIs
-
-Get All Interviews
-
-GET
-
-/api/v1/interview/getAllInterviews
-
-Access
-
-Protected
-
-Returns interview history according to the authenticated user's role and interview ownership.
-
-Get Interview Details
-
-GET
-
-/api/v1/interview/getInterviewDetails/:interviewId
-
-Access
-
-Protected
-
-Returns interview details such as:
-
-Interview source
-
-Questions
-
-Submitted answers
-
-Evaluation
-
-Score
-
-Skills assessment
-
-Interview status
-
-Interview metadata
-
-🤖 Gemini AI Services
-
-The Gemini service contains separate question-generation functions for each interview source.
-
-JD Questions
-
-generateInterviewQuestions()
-
-Inputs:
-
+userId
+interviewType
+candidateName
+candidateEmail
+questionsSources
 jobTitle
 jobDescription
 experienceLevel
-
-Output:
-
-Array<String>
-
-Exactly five questions are generated.
-
-Topic Questions
-
-generateTopicInterviewQuestions()
-
-Inputs:
-
 topics
-experienceLevel
+questions
+answers
+evaluation
+status
+createdAt
 
-Output:
-
-Array<String>
-
-Exactly five questions are generated.
-
-Resume Questions
-
-generateResumeInterviewQuestions()
-
-Inputs:
-
-resumeText
-experienceLevel
-
-Output:
-
-Array<String>
-
-Exactly five questions are generated.
-
-The resume text is sent once as candidate context rather than using a separate Gemini parsing call.
-
-Interview Evaluation
-
-evaluateInterviewSession()
-
-Input:
-
-[
-  {
-    "questionText": "...",
-    "userAnswer": "..."
-  }
-]
-
-Output:
-
-{
-  "overallScore": 8,
-  "feedbackSummary": "Detailed feedback...",
-  "skillsAssessment": [
-    "Strong: Async Programming",
-    "Weak: Database Indexing"
-  ]
-}
-
-🗃️ Interview Data Model
-
-The Interview model supports both candidate practice and recruiter campaign interviews.
-
-Interview Type
-
-practice
-campaign
-
-Question Source
-
-jd
-topics
-resume
-
-Experience Level
-
-fresher
-junior
-mid
-senior
-
-Interview Status
+Interview statuses include:
 
 pending
 active
 expired
 completed
 
-Important Interview Fields
+Interview APIs
 
-userId
-interviewType
-candidateName
-candidateEmail
-accessOtp
+Representative endpoints:
 
-jobTitle
-jobDescription
-experienceLevel
-questionSource
-topics
+POST /interview/startInterview
+POST /interview/submitAnswer
+POST /interview/endInterview
 
-questions
-answers
-evaluation
-status
+GET /interview/getInterviewDetails/:interviewId
+GET /interview/:interviewId/report
+GET /interview/getAllInterviews
 
-createdAt
-updatedAt
+File Upload Limits
 
-📁 File Upload Strategy
+Current intended limits:
 
-Multer uses memory storage:
+Resume: PDF, max 5 MB
+Audio: WebM, max 10 MB
 
-PDF / Audio
-     ↓
-Multer
-     ↓
-req.file.buffer
-     ↓
-Immediate Processing
+Multer validates both size and MIME type.
 
-This is currently used for:
+Rate Limiting
 
-resume PDF
-candidate audio
+Important endpoints are rate-limited to reduce abuse.
 
-The backend does not need to permanently store these files for the current interview-generation and transcription flow.
+Current limits include:
 
-🔐 Security
+Operation
 
-Protected APIs use the protect middleware.
+Limit
 
-The middleware:
+Start interview
 
-Reads the JWT from the cookie or Authorization header.
+5/hour
 
-Verifies the JWT.
+Submit answer
 
-Finds the corresponding user.
+30/15 min
 
-Attaches the authenticated user to req.user.
+TTS
 
-Continues the request.
+40/15 min
 
-Passwords are protected using bcrypt.
+End interview
 
-Campaign candidates use OTP verification for access.
+10/hour
 
-API secrets are loaded through environment variables.
+OTP operations
 
-👨‍💻 Developer Notes
+Rate limited
 
-Protected Routes
+Rate limiting is separate from a business rule such as a three-free-interview quota.
 
-All candidate-specific protected routes should use:
+Environment Variables
 
-router.post("/example", protect, controller.example);
+Example:
 
-Error Handling
+NODE_ENV=development
+PORT=5000
 
-Controllers should pass errors to the centralized Express error handler.
+MONGO_URI=
+JWT_SECRET=
 
-Preferred:
+GEMINI_API_KEY=
+DEEPGRAM_API_KEY=
 
-catch (error) {
-    return next(error);
-}
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=
 
-Avoid duplicating error-response logic in every controller unless there is a specific reason.
+BREVO_API_KEY=
+BREVO_SENDER_EMAIL=
+BREVO_SENDER_NAME=AceGrad AI
 
-Interview Answer Storage
+CLIENT_URL=
 
-Interview answers should remain mapped to their original questions through:
+Never commit real secrets.
 
-questionIndex
-questionText
-userAnswer
+Local Setup
 
-This allows the evaluation service to understand exactly which answer belongs to which question.
+cd backend
+npm install
 
-Resume Processing
+Create .env, then run the scripts defined in package.json, commonly:
 
-The current resume pipeline intentionally avoids:
+npm run dev
 
-PDF → LaTeX → Gemini
+or:
 
-and avoids using two Gemini calls for resume parsing + question generation.
+npm start
 
-Current pipeline:
+Production
 
-PDF
- ↓
-PDF Text Extraction
- ↓
-Clean Resume Text
- ↓
-ONE Gemini Question Generation Call
+Before deployment:
 
-This keeps the implementation simpler and avoids unnecessary AI processing.
+Use MongoDB Atlas
 
-🚀 Current Project Status
+Configure all environment variables on the hosting provider
 
-Candidate Practice
+Use a strong JWT secret
 
-JD-based interview          ✅
-Topic-based interview       ✅
-Resume PDF interview        ✅
-Gemini question generation  ✅
-PDF text extraction         ✅
-Deepgram transcription      ✅
-Audio answer processing     ✅
-Answer storage              ✅
-AI evaluation               ✅
-Interview history           ✅
-Interview details           ✅
+Restrict CORS to the production frontend
 
-Recruiter Campaign
+Use process.env.PORT || 5000
 
-Campaign interview model    ✅
-Candidate OTP access        ✅
-Guest candidate support     ✅
-Campaign interview flow     🚧
-Recruiter dashboard         🚧
+Keep API keys out of Git
 
-🔮 Future Improvements
+Verify Gemini, Deepgram, Azure and Brevo
 
-Potential future improvements:
+Keep upload limits enabled
 
-Adaptive follow-up questions
+Keep rate limiting enabled
 
-Real-time streaming speech-to-text
+Restrict MongoDB network access
 
-Per-question AI scoring
+Security Checklist
 
-Communication and confidence analysis
+Strong JWT secret
 
-Resume structured-data extraction
+.env ignored by Git
 
-Interview timer and automatic expiration
+API keys not hardcoded
 
-Advanced candidate analytics
+Passwords hashed
 
-Recruiter candidate comparison
+Protected routes use authentication
 
-Interview recordings
+CORS configured for production
 
-Stronger file-size/type validation
+Rate limiting enabled
 
-Automated API testing
+Upload size/type validation enabled
 
-Rate-limit tuning
+Production stack traces disabled
 
-Background processing for long-running AI tasks
+MongoDB access restricted
 
-🚀 AceGrad AI
+Future Improvements
 
-Built with Node.js, Express, MongoDB, Google Gemini, Deepgram, and AI-powered interview workflows to provide realistic technical interview practice and recruiter assessment infrastructure.
+Hash OTP values in the database
+
+Stronger OTP attempt enforcement
+
+Structured production logging
+
+Monitoring/error tracking
+
+Free-interview quota enforcement
+
+Automated API/integration tests
+
+OpenAPI/Swagger documentation
+
+Background processing for expensive AI operations
+
+AceGrad AI — AI-powered interview practice and intelligent evaluation.
