@@ -7,26 +7,36 @@ import router from "./routes/user.route.js";
 
 const app = express();
 
-app.use(express.json());
-app.use(cors());
+// Body parser
+app.use(express.json({ limit: "1mb" }));
 
-// routes
+// CORS
+app.use(
+  cors({
+    origin: process.env.CLIENT_URL,
+  })
+);
+
+// Health check
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "AceGrad AI backend is healthy",
+  });
+});
+
+// Routes
 app.use("/api/v1/auth", router);
 app.use("/api/v1/interview", interviewRouter);
 
-// healthy Api
-app.get('/', (req, res) => {
-    res.status(200).json({ status: "success", message: "Server is healthy" });
-});
-
-// 404 handler — koi bhi undefined route hit hone par
-// 404 handler — koi bhi undefined route hit hone par
+// 404 handler
 app.use((req, res, next) => {
-    next(new AppError(`Route ${req.originalUrl} not found`, 404));
+  next(
+    new AppError(`Route ${req.originalUrl} not found`, 404)
+  );
 });
 
+// Global error handler
 app.use(globalErrorHandler);
-
-
 
 export default app;
