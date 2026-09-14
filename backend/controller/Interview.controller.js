@@ -12,7 +12,8 @@ import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
 import { transcribeAudio } from "../services/deepgram.service.js";
 import { synthesizeSpeech } from "../services/azureTts.service.js";
-
+import fs from "fs";
+import { io } from "../server.js";
 // ==================================================
 // START INTERVIEW
 // ==================================================
@@ -208,17 +209,7 @@ export const startInterview = async (req, res, next) => {
     // --------------------------------------------------
     // 8. Create Interview
     // --------------------------------------------------
-    // if (req.user.role === "candidate") {
-    //   const user = await User.findById(req.user.id).select("freeInterviewsUsed");
-
-    //   if (user.freeInterviewsUsed >= 3) {
-    //     return res.status(403).json({
-    //       success: false,
-    //       message: "You have used all 3 free interviews. Please upgrade to continue.",
-    //       code: "FREE_INTERVIEW_LIMIT_REACHED",
-    //     });
-    //   }
-    // }
+    
     const newInterview = await Interview.create({
       userId,
       questionsSources,
@@ -635,6 +626,9 @@ export const submitAnswer = async (req, res, next) => {
     // 7. Deepgram Speech-to-Text
     // --------------------------------------------------
 
+
+fs.writeFileSync("/tmp/test-answer.webm", req.file.buffer);
+console.log("💾 Test audio saved:", req.file.buffer.length);
     const transcript = await transcribeAudio(req.file.buffer);
 
     console.log(" Deepgram Transcript:", transcript);
@@ -704,19 +698,13 @@ export const endInterview = async (req, res, next) => {
   try {
     const { interviewId } = req.body;
 
-    // --------------------------------------------------
-    // 1. Interview ID Validation
-    // --------------------------------------------------
+
 
     if (!interviewId) {
       return next(
         new AppError("Interview ID is required to process evaluation", 400),
       );
     }
-
-    // --------------------------------------------------
-    // 2. Find Interview
-    // --------------------------------------------------
 
     const interview = await Interview.findOne({
       _id: interviewId,
@@ -729,10 +717,6 @@ export const endInterview = async (req, res, next) => {
       );
     }
 
-    // --------------------------------------------------
-    // 3. Completed Check
-    // --------------------------------------------------
-
     if (interview.status === "completed") {
       return next(
         new AppError(
@@ -742,17 +726,10 @@ export const endInterview = async (req, res, next) => {
       );
     }
 
-    // --------------------------------------------------
-    // 4. Active Status Check
-    // --------------------------------------------------
-
+  
     if (interview.status !== "active") {
       return next(new AppError("Interview session is not active", 400));
     }
-
-    // --------------------------------------------------
-    // 5. Answers Check
-    // --------------------------------------------------
 
     if (!interview.answers || interview.answers.length === 0) {
       return next(
@@ -763,10 +740,6 @@ export const endInterview = async (req, res, next) => {
       );
     }
 
-    // --------------------------------------------------
-    // 6. Complete Interview Check
-    // --------------------------------------------------
-
     if (interview.answers.length !== interview.questions.length) {
       return next(
         new AppError(
@@ -776,26 +749,41 @@ export const endInterview = async (req, res, next) => {
       );
     }
 
-    // --------------------------------------------------
-    // 7. Prepare Q&A Payload
-    // --------------------------------------------------
+ 
+ const qaPayload = interview.answers.map((item) => ({
+  questionIndex: item.questionIndex,
+  questionText: item.questionText,
+  userAnswer: item.userAnswer,
+   }));
 
-    const qaPayload = interview.answers.map((item) => ({
-      questionIndex: item.questionIndex,
-      questionText: item.questionText,
-      userAnswer: item.userAnswer,
-    }));
+ console.log("🚀 Starting AI interview evaluation...");
 
-    // --------------------------------------------------
-    // 8. AI Evaluation
-    // --------------------------------------------------
 
-    console.log(" Starting AI interview evaluation...");
-    const aiEvaluationReport = await evaluateInterviewSession(qaPayload);
+// Close interview immediately
 
-    // --------------------------------------------------
-    // 9. Validate AI Evaluation
-    // --------------------------------------------------
+   interview.status = "completed";
+  interview.evaluationStatus = "processing";
+
+  await interview.save();
+
+
+// Send response immediately
+
+  res.status(202).json({
+  status: "success",
+  message: "Interview completed. Evaluation is being processed.",
+  data: {
+    status: interview.status,
+    evaluationStatus: interview.evaluationStatus,
+  },
+});
+
+
+    // Run AI evaluation in background
+
+   evaluateInterviewSession(qaPayload)
+  .then(async (aiEvaluationReport) => {
+    console.log("✅ AI evaluation completed");
 
     const validScore = (score) =>
       typeof score === "number" && score >= 0 && score <= 10;
@@ -816,45 +804,37 @@ export const endInterview = async (req, res, next) => {
     if (!isValidEvaluation) {
       console.error("❌ Invalid AI Evaluation:", aiEvaluationReport);
 
-      return next(
-        new AppError("AI returned an invalid evaluation report", 500),
-      );
+      interview.evaluationStatus = "failed";
+      await interview.save();
+
+      return;
     }
 
-    // --------------------------------------------------
-    // 10. Save Evaluation
-    // --------------------------------------------------
-
     interview.evaluation = aiEvaluationReport;
+    interview.evaluationStatus = "completed";
 
-    // --------------------------------------------------
-    // 11. Close Interview
-    // --------------------------------------------------
-
-    interview.status = "completed";
     await interview.save();
 
-    // --------------------------------------------------
-    // 12. Response
-    // --------------------------------------------------
+    console.log("✅ Evaluation saved successfully");
+    io.to(`interview:${interviewId}`).emit("evaluation-completed", {
+  interviewId,
+  evaluation: aiEvaluationReport,
+});
+  })
+  .catch(async (error) => {
+    console.error("❌ Background AI Evaluation Error:", error);
 
-    return res.status(200).json({
-      status: "success",
+    interview.evaluationStatus = "failed";
 
-      message: "Interview evaluated successfully and session has been closed",
-
-      data: {
-        evaluation: interview.evaluation,
-
-        status: interview.status,
-      },
-    });
-  } catch (error) {
+    await interview.save();
+  })
+    } catch (error) {
     console.error("❌ End Interview Error:", error);
-
     return next(error);
   }
 };
+
+
 
 // ==================================================
 // GET ALL INTERVIEWS
@@ -946,9 +926,11 @@ export const getInterviewReport = async (req, res, next) => {
       return next(new AppError("Interview report not found", 404));
     }
 
-    if (interview.status !== "completed") {
-      return next(new AppError("Interview has not been evaluated yet", 400));
-    }
+   if (interview.evaluationStatus !== "completed") {
+  return next(
+    new AppError("Interview evaluation is still being processed", 400)
+  );
+}
 
     return res.status(200).json({
       status: "success",

@@ -5,8 +5,9 @@ import InterviewTopBar from "./InterviewTopBar";
 import CameraSection from "./CameraSection";
 import EvaluationPanel from "./EvaluationPanel";
 import InterviewControlBar from "./InterviewControlBar";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { Home, AlertCircle, Loader2 } from "lucide-react";
 import API from "../../services/api";
+import { io } from "socket.io-client";
 
 const ACTIVE_INTERVIEW_KEY = "acegrad_active_interview_id";
 
@@ -39,6 +40,7 @@ export default function StartInterview() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEvaluatingRef = useRef(false);
   const [isComplete, setIsComplete] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [evaluation, setEvaluation] = useState(null);
@@ -77,43 +79,50 @@ export default function StartInterview() {
   const currentQuestionIndexRef = useRef(0);
   const interviewIdRef = useRef("");
 
+// =========================================================
+// WEBSOCKET - AI EVALUATION RESULT
+// =========================================================
+useEffect(() => {
+  if (!interviewID) return;
 
-  useEffect(() => {
-    return () => {
-      isUnmountingRef.current = true;
+  console.log("🔌 Connecting WebSocket:", interviewID);
 
-      stopSilenceDetection();
+  const socket = io("http://localhost:5000");
 
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state === "recording"
-      ) {
-        mediaRecorderRef.current.stop();
-      }
+  socket.emit("join-interview", interviewID);
 
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
+  console.log("👤 Joined interview room:", interviewID);
 
-        audioElementRef.current.onended = null;
-        audioElementRef.current.onerror = null;
-        audioElementRef.current.onabort = null;
+  const handleEvaluationCompleted = (data) => {
+    console.log("🎉 Evaluation completed:", data);
 
-        audioElementRef.current = null;
-      }
+    if (data?.interviewId !== interviewID) {
+      console.warn("⚠️ Wrong interview evaluation received");
+      return;
+    }
 
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
+    setEvaluation(data.evaluation);
 
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
+    setIsEvaluating(false);
+    setIsComplete(true);
 
-      // ACTIVE_INTERVIEW_KEY intentionally clear mat karna
-    };
-  }, []);
+    isEvaluatingRef.current = false;
+
+    clearActiveInterview();
+
+    console.log("✅ Evaluation received successfully");
+  };
+
+  socket.on("evaluation-completed", handleEvaluationCompleted);
+
+  return () => {
+    console.log("🔌 Disconnecting WebSocket");
+
+    socket.off("evaluation-completed", handleEvaluationCompleted);
+    socket.disconnect();
+  };
+}, [interviewID]);
+ 
   // =========================================================
   // CONSTANTS
   // =========================================================
@@ -877,22 +886,23 @@ const playBackendAudio = (
     if (!questionText) {
       return;
     }
-      if (
-    hasStartedRecordingRef.current ||
-    isSubmittingRef.current ||
-    isComplete
-  ) {
-    return;
-  }
-
+     if (
+  hasStartedRecordingRef.current ||
+  isSubmittingRef.current ||
+  isEvaluatingRef.current ||
+  isComplete
+) {
+  return;
+}
      playTTS(questionText, () => {
-    if (
-      !hasStartedRecordingRef.current &&
-      !isSubmittingRef.current &&
-      !isComplete
-    ) {
-      startRecording();
-    }
+   if (
+  !hasStartedRecordingRef.current &&
+  !isSubmittingRef.current &&
+  !isEvaluatingRef.current &&
+  !isComplete
+) {
+  startRecording();
+}
   });
   };
 
@@ -949,13 +959,14 @@ const playBackendAudio = (
   // =========================================================
 
   const startRecording = async () => {
-    if (
-      hasStartedRecordingRef.current ||
-      isSubmittingRef.current ||
-      isComplete
-    ) {
-      return;
-    }
+   if (
+  hasStartedRecordingRef.current ||
+  isSubmittingRef.current ||
+  isEvaluatingRef.current ||
+  isComplete
+) {
+  return;
+}
 
     if (isOffline) {
       setErrorMsg("Internet connection lost");
@@ -1004,7 +1015,7 @@ const playBackendAudio = (
       recorder.start();
       setIsRecording(true);
       console.log("🎙️ Recording started.");
-      startSilenceDetection(stream);
+     // startSilenceDetection(stream);
     } catch (error) {
       console.error("❌ Recording Start Error:", error);
 
@@ -1159,6 +1170,13 @@ const playBackendAudio = (
       type: mimeType,
     });
 
+    console.log("🎧 FINAL AUDIO DEBUG:", {
+  size: audioBlob.size,
+  type: audioBlob.type,
+  chunks: audioChunksRef.current.length,
+});
+
+
     audioChunksRef.current = [];
 
     console.log(" FINAL AUDIO:", {
@@ -1263,45 +1281,71 @@ const playBackendAudio = (
    if (!nextQuestion) {
   await finishInterview();
   return;
-}
+}  
+// Update question index
       currentQuestionIndexRef.current = nextQuestion.questionIndex;
       setCurrentQuestionIdx(nextQuestion.questionIndex);
 
+      // Update question text      
       const nextQuestionText = nextQuestion.question || "";
-      if (nextQuestionText) {
-        setDisplayedQuestion(nextQuestionText);
-      }
-
-      if (nextQuestion.audioContent) {
-        await playBackendAudio(
-          nextQuestion.audioContent,
-          nextQuestion.contentType || "audio/wav",
-          () => {
-            startRecording();
-          },
-        );
-      } else {
+if (nextQuestionText) {
+  setDisplayedQuestion(nextQuestionText);
+}
+      // Play backend-generated audio if available
+   if (nextQuestion.audioContent) {
+  playBackendAudio(
+    nextQuestion.audioContent,
+    nextQuestion.contentType || "audio/wav",
+    () => {
+      startRecording();
+    }
+  );
+     
+      } else if(nextQuestionText){
+          // Fallback: generate/play TTS from question text
         speakQuestion(nextQuestionText);
       }
     } catch (error) {
-      console.error(" Submit Answer Error:", error);
+  console.error("❌ Submit Answer Error:", error);
+  console.log("STATUS:", error.response?.status);
+  console.log("BACKEND RESPONSE:", error.response?.data);
 
-      console.log("STATUS:", error.response?.status);
-      console.log("BACKEND RESPONSE:", error.response?.data);
+  const backendMessage = error.response?.data?.message || "";
 
-      // ---------------------------------------------
-      // PRESERVE FAILED ANSWER
-      // ---------------------------------------------
-      failedAnswerRef.current = {
-        audioBlob: pendingAudio,
-        questionIndex,
-        interviewId,
-      };
-      setHasFailedAnswer(true);
-      setErrorMsg(
-        error.response?.data?.message ||
-          "Answer doesn't save . Please retry.",
-      );
+  // ---------------------------------------------
+  // NO SPEECH DETECTED
+  // ---------------------------------------------
+  if (
+    backendMessage.toLowerCase().includes("no speech detected")
+  ) {
+    // Don't preserve the same silent audio for retry
+    failedAnswerRef.current = null;
+
+    setHasFailedAnswer(false);
+
+    setErrorMsg(
+      "No speech detected. Please record your answer again."
+    );
+
+    return;
+  }
+
+  // ---------------------------------------------
+  // OTHER ERRORS
+  // ---------------------------------------------
+  failedAnswerRef.current = {
+    audioBlob: pendingAudio,
+    questionIndex,
+    interviewId,
+  };
+
+  setHasFailedAnswer(true);
+
+  setErrorMsg(
+    backendMessage ||
+      "Answer couldn't be saved. Please retry."
+  );
+
     } finally {
       isSubmittingRef.current = false;
       setIsSubmitting(false);
@@ -1318,10 +1362,12 @@ const playBackendAudio = (
       return;
     }
 
-    if (isOffline) {
-      setErrorMsg("Internet connection lost. Please reconnect and retry.");
-      return;
-    }
+   if (isOffline) {
+  setErrorMsg(
+    "Internet connection lost. Please reconnect."
+  );
+  return;
+}
 
     console.log(" Retrying failed answer:", {
       questionIndex: failedAnswer.questionIndex,
@@ -1336,10 +1382,17 @@ const playBackendAudio = (
   // =========================================================
 
   const finishInterview = async () => {
-     const interviewId = interviewIdRef.current;
-  if (!interviewId) {
-  return;
-}
+  if (isEvaluatingRef.current) {
+    return;
+  }
+    isEvaluatingRef.current = true;
+      const interviewId = interviewIdRef.current;
+
+      if (!interviewId) {
+    isEvaluatingRef.current = false;
+    return;
+  }
+
 
     if (isOffline) {
       setErrorMsg(
@@ -1358,18 +1411,18 @@ const playBackendAudio = (
   interviewId,
 });
 
-      console.log("📊 Interview Evaluation:", response.data);
-      const result = response?.data?.data;
-      setEvaluation(result?.evaluation || null);
-      setIsComplete(true);
+     console.log("📊 Interview End Response:", response.data);
 
-      // Interview is successfully completed.
-      clearActiveInterview();
+setIsComplete(true);
+clearActiveInterview();
+console.log( "⏳ Interview completed. Waiting for AI evaluation via WebSocket...");
     } catch (error) {
+      
       console.error("❌ End Interview Error:", error);
       console.log("STATUS:", error.response?.status);
       console.log("BACKEND RESPONSE:", error.response?.data);
-
+      isEvaluatingRef.current = false;
+setIsEvaluating(false);
       setEvaluationError(true);
       setErrorMsg(
         error.response?.data?.message ||
@@ -1377,9 +1430,7 @@ const playBackendAudio = (
       );
 
   
-    } finally {
-      setIsEvaluating(false);
-    }
+    } 
   };
 
   // =========================================================
@@ -1391,41 +1442,37 @@ const playBackendAudio = (
       stopRecording();
     }
   };
-
-  // =========================================================
-  // 19. CLEANUP
-  // =========================================================
-
   useEffect(() => {
-    return () => {
-      stopSilenceDetection();
+  return () => {
+    isUnmountingRef.current = true;
 
-      if (
-        mediaRecorderRef.current &&
-        mediaRecorderRef.current.state === "recording"
-      ) {
-        mediaRecorderRef.current.stop();
-      }
+    stopSilenceDetection();
 
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
-        audioElementRef.current.onended = null;
-        audioElementRef.current.onerror = null;
-        audioElementRef.current.onabort = null;
-        audioElementRef.current = null;
-      }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+    }
 
-      if (audioUrlRef.current) {
-        URL.revokeObjectURL(audioUrlRef.current);
-        audioUrlRef.current = null;
-      }
+    if (audioElementRef.current) {
+      audioElementRef.current.pause();
+      audioElementRef.current.onended = null;
+      audioElementRef.current.onerror = null;
+      audioElementRef.current.onabort = null;
+      audioElementRef.current = null;
+    }
 
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
-    };
-  }, []);
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+    }
+  };
+}, []);
+
+  
 
   // =========================================================
   // 20. STATUS
@@ -1455,7 +1502,13 @@ const playBackendAudio = (
         <div className="w-full max-w-2xl rounded-3xl border border-white/10 bg-[#0d1538]/80 p-8 text-center shadow-2xl backdrop-blur-xl">
           <h2 className="text-3xl font-bold text-white">Interview Complete!</h2>
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
-  
+  <button
+  onClick={() => navigate("/candidate-dashboard", { replace: true })}
+  className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-700"
+>
+  <Home size={18} />
+  Go to Dashboard
+</button>
   {isEvaluating && !evaluation && !evaluationError && (
   <div className="mt-8 text-center">
     <Loader2 className="mx-auto h-7 w-7 animate-spin text-[#6366f1]" />
@@ -1676,6 +1729,13 @@ const playBackendAudio = (
           />
         </div>
       </main>
+        <InterviewControlBar
+        onNext={() => {}}
+        onStop={stopListeningManually}
+        isRecording={isRecording}
+        isLastQuestion={currentQuestionIdx === questions.length - 1}
+        canProceed={false}
+      />
     </div>
   );
 }

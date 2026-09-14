@@ -150,6 +150,11 @@ evaluation: {
     min: 0,
     max: 10,
   },
+  evaluationStatus: {
+  type: String,
+  enum: ["pending", "processing", "completed", "failed"],
+  default: "pending",
+},
 
   technicalScore: {
     type: Number,

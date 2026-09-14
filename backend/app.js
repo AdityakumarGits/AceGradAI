@@ -11,12 +11,18 @@ const app = express();
 app.use(express.json({ limit: "1mb" }));
 
 // CORS
-app.use(
-  cors({
-    origin: process.env.CLIENT_URL,
-  })
-);
-
+// app.use(
+//   cors({
+//     origin: process.env.CLIENT_URL,
+//   })
+// );
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "http://localhost:3000"
+  ],
+  credentials: true
+}));
 // Health check
 app.get("/health", (req, res) => {
   res.status(200).json({
