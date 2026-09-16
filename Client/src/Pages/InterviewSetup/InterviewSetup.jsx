@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Wifi } from "lucide-react";
 import { useAuth } from "../../context/useAuth";
-import { useInternetCheck } from "./hooks/useInternetCheck";
-import { useCameraStream } from "./hooks/useCameraStream";
+import { useInternetCheck } from "./hooks/useInternetCheck.js";
+import { useCameraStream } from "./hooks/useCameraStream.js";
 import ChecklistItem from "./components/ChecklistItem";
 import MicTestStep from "./components/MicTestSetup";
 import CameraPreview from "./components/CameraPreview";
