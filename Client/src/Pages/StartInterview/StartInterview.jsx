@@ -78,8 +78,34 @@ export default function StartInterview() {
   const questionPlaybackRef = useRef(null);
   const currentQuestionIndexRef = useRef(0);
   const interviewIdRef = useRef("");
+ 
+  // =========================================================
+  // CONSTANTS
+  // =========================================================
 
-// =========================================================
+  // const SILENCE_DURATION = 3000;
+  // const SILENCE_THRESHOLD = 0.015;
+
+  // =========================================================
+  // HELPER — SAVE ACTIVE INTERVIEW
+  // =========================================================
+
+  const saveActiveInterview = (id) => {
+    if (!id) return;
+    sessionStorage.setItem(ACTIVE_INTERVIEW_KEY, id);
+    console.log("💾 Active interview saved:", id);
+  };
+
+  // =========================================================
+  // HELPER — CLEAR ACTIVE INTERVIEW
+  // =========================================================
+
+function clearActiveInterview() {
+  sessionStorage.removeItem(ACTIVE_INTERVIEW_KEY);
+  console.log("🧹 Active interview session cleared.");
+}
+
+  // =========================================================
 // WEBSOCKET - AI EVALUATION RESULT
 // =========================================================
 useEffect(() => {
@@ -87,7 +113,7 @@ useEffect(() => {
 
   console.log("🔌 Connecting WebSocket:", interviewID);
 
-  const socket = io("http://localhost:5000");
+  const socket = io(import.meta.env.VITE_SOCKET_URL);
 
   socket.emit("join-interview", interviewID);
 
@@ -122,32 +148,6 @@ useEffect(() => {
     socket.disconnect();
   };
 }, [interviewID]);
- 
-  // =========================================================
-  // CONSTANTS
-  // =========================================================
-
-  const SILENCE_DURATION = 3000;
-  const SILENCE_THRESHOLD = 0.015;
-
-  // =========================================================
-  // HELPER — SAVE ACTIVE INTERVIEW
-  // =========================================================
-
-  const saveActiveInterview = (id) => {
-    if (!id) return;
-    sessionStorage.setItem(ACTIVE_INTERVIEW_KEY, id);
-    console.log("💾 Active interview saved:", id);
-  };
-
-  // =========================================================
-  // HELPER — CLEAR ACTIVE INTERVIEW
-  // =========================================================
-
-  const clearActiveInterview = () => {
-    sessionStorage.removeItem(ACTIVE_INTERVIEW_KEY);
-    console.log("🧹 Active interview session cleared.");
-  };
 
   // =========================================================
   // HELPER — FIND NEXT UNANSWERED QUESTION
@@ -587,6 +587,7 @@ interviewIdRef.current = interview._id;
       window.removeEventListener("offline", handleOffline);
       window.removeEventListener("online", handleOnline);
     };
+      // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewID, isRecording, isSubmitting, isSpeaking]);
 
   // =========================================================
@@ -831,7 +832,7 @@ const playBackendAudio = (
   // =========================================================
   // 6. SPEAK WELCOME + QUESTION
   // =========================================================
-  const speakWelcomeThenQuestion = (welcomeAudio, firstQuestionAudio) => {
+  function speakWelcomeThenQuestion (welcomeAudio, firstQuestionAudio) {
     if (!welcomeAudio?.audioContent) {
       const questionText =
         firstQuestionAudio?.question || firstQuestionTextRef.current;
@@ -882,7 +883,7 @@ const playBackendAudio = (
     );
   };
 
-  const speakQuestion = (questionText) => {
+  function speakQuestion(questionText) {
     if (!questionText) {
       return;
     }
@@ -1049,75 +1050,75 @@ const playBackendAudio = (
   // 12. SILENCE DETECTION
   // =========================================================
 
-  const startSilenceDetection = (stream) => {
-    stopSilenceDetection();
+  // const startSilenceDetection = (stream) => {
+  //   stopSilenceDetection();
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
+  //   const AudioContext = window.AudioContext || window.webkitAudioContext;
 
-    if (!AudioContext) {
-      console.warn("AudioContext not supported.");
+  //   if (!AudioContext) {
+  //     console.warn("AudioContext not supported.");
 
-      return;
-    }
+  //     return;
+  //   }
 
-    const audioContext = new AudioContext();
-    const source = audioContext.createMediaStreamSource(stream);
-    const analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-    analyser.smoothingTimeConstant = 0.8;
-    source.connect(analyser);
-    audioContextRef.current = audioContext;
-    analyserRef.current = analyser;
-    const dataArray = new Uint8Array(analyser.fftSize);
-    let silenceStartedAt = null;
-    let hasDetectedSpeech = false;
+  //   const audioContext = new AudioContext();
+  //   const source = audioContext.createMediaStreamSource(stream);
+  //   const analyser = audioContext.createAnalyser();
+  //   analyser.fftSize = 2048;
+  //   analyser.smoothingTimeConstant = 0.8;
+  //   source.connect(analyser);
+  //   audioContextRef.current = audioContext;
+  //   analyserRef.current = analyser;
+  //   const dataArray = new Uint8Array(analyser.fftSize);
+  //   let silenceStartedAt = null;
+  //   let hasDetectedSpeech = false;
 
-    const detectSilence = () => {
-      if (
-        !mediaRecorderRef.current ||
-        mediaRecorderRef.current.state !== "recording"
-      ) {
-        return;
-      }
+  //   const detectSilence = () => {
+  //     if (
+  //       !mediaRecorderRef.current ||
+  //       mediaRecorderRef.current.state !== "recording"
+  //     ) {
+  //       return;
+  //     }
 
-      analyser.getByteTimeDomainData(dataArray);
+  //     analyser.getByteTimeDomainData(dataArray);
 
-      let sum = 0;
+  //     let sum = 0;
 
-      for (let i = 0; i < dataArray.length; i++) {
-        const normalized = (dataArray[i] - 128) / 128;
+  //     for (let i = 0; i < dataArray.length; i++) {
+  //       const normalized = (dataArray[i] - 128) / 128;
 
-        sum += normalized * normalized;
-      }
+  //       sum += normalized * normalized;
+  //     }
 
-      const rms = Math.sqrt(sum / dataArray.length);
-      const isSilent = rms < SILENCE_THRESHOLD;
+  //     const rms = Math.sqrt(sum / dataArray.length);
+  //     const isSilent = rms < SILENCE_THRESHOLD;
 
-      if (!isSilent) {
-        hasDetectedSpeech = true;
+  //     if (!isSilent) {
+  //       hasDetectedSpeech = true;
 
-        silenceStartedAt = null;
-      } else if (hasDetectedSpeech) {
-        if (silenceStartedAt === null) {
-          silenceStartedAt = Date.now();
-        }
+  //       silenceStartedAt = null;
+  //     } else if (hasDetectedSpeech) {
+  //       if (silenceStartedAt === null) {
+  //         silenceStartedAt = Date.now();
+  //       }
 
-        const silenceDuration = Date.now() - silenceStartedAt;
+  //       const silenceDuration = Date.now() - silenceStartedAt;
 
-        if (silenceDuration >= SILENCE_DURATION) {
-          console.log(" 3 seconds silence detected after speech.");
+  //       if (silenceDuration >= SILENCE_DURATION) {
+  //         console.log(" 3 seconds silence detected after speech.");
 
-          stopRecording();
+  //         stopRecording();
 
-          return;
-        }
-      }
+  //         return;
+  //       }
+  //     }
 
-      animationFrameRef.current = requestAnimationFrame(detectSilence);
-    };
+  //     animationFrameRef.current = requestAnimationFrame(detectSilence);
+  //   };
 
-    detectSilence();
-  };
+  //   detectSilence();
+  // };
 
   // =========================================================
   // 13. STOP SILENCE DETECTION

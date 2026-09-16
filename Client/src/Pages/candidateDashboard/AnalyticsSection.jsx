@@ -1,6 +1,3 @@
-// src/Pages/candidateDashboard/AnalyticsSection.jsx
-
-import React from "react";
 
 export default function AnalyticsSection({
   interviews = [],

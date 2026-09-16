@@ -1,4 +1,4 @@
-import { Radio, Video } from "lucide-react";
+import { Radio } from "lucide-react";
 import { useCameraStream } from "../InterviewSetup/hooks/useCameraStream";
 import CameraPreview from "../InterviewSetup/components/CameraPreview";
 

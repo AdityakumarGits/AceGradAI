@@ -14,6 +14,7 @@ import VerifyOTP from "./Pages/VerifyOTP";
 import PrivateRoute from "./context/PrivateRoute";
 import ForgotPassword from "./Pages/ForgotPassword";
 
+
 const App = () => {
   return (
     <Routes>

@@ -20,7 +20,7 @@ export default function InterviewConfig({ onClose }) {
   const [jobTitle, setJobTitle] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [resumeFile, setResumeFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+ 
 
   // ==================================================
   // TOPICS
@@ -46,18 +46,15 @@ export default function InterviewConfig({ onClose }) {
     setCustomTopic("");
   };
 
-  // ==================================================
+
   // CONTINUE
-  // ==================================================
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    if (loading) return;
 
-    // -----------------------------------------------
+   
     // JD VALIDATION
-    // -----------------------------------------------
 
     if (activeTab === "jd") {
       if (!jobTitle.trim()) {
@@ -71,9 +68,8 @@ export default function InterviewConfig({ onClose }) {
       }
     }
 
-    // -----------------------------------------------
+
     // TOPICS VALIDATION
-    // -----------------------------------------------
 
     if (activeTab === "topics") {
       if (selectedTopics.length === 0) {
@@ -87,9 +83,8 @@ export default function InterviewConfig({ onClose }) {
       }
     }
 
-    // -----------------------------------------------
     // RESUME VALIDATION
-    // -----------------------------------------------
+    
 
     if (activeTab === "resume") {
       if (!resumeFile) {
@@ -112,16 +107,15 @@ export default function InterviewConfig({ onClose }) {
       }
     }
 
-    // -----------------------------------------------
+  
     // BUILD INTERVIEW CONFIG
-    // -----------------------------------------------
+  
 
     const interviewConfig = {
       questionsSources: activeTab,
 
       // JD
       jobTitle: activeTab === "jd" ? jobTitle.trim() : "",
-
       jobDescription: activeTab === "jd" ? jobDescription.trim() : "",
 
       // Topics
@@ -137,10 +131,9 @@ export default function InterviewConfig({ onClose }) {
 
     console.log("Interview Configuration:", interviewConfig);
 
-    // -----------------------------------------------
+   
     // MOVE TO INTERVIEW SETUP
-    // -----------------------------------------------
-
+  
     navigate("/interviewsetup", {
       state: interviewConfig,
     });

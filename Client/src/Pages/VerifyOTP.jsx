@@ -11,9 +11,10 @@ const VerifyOTP = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [email, setEmail] = useState(location.state?.email || "");
+  // const [email] = useState(location.state?.email || "");
   const [loading, setLoading] = useState(false);
   const [timer, setTimer] = useState(60);
+  const email = location.state?.email || "";
   useEffect(() => {
     if (!email) {
       candidateToast.error("Session expired. Please sign up again.");

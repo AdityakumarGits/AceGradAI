@@ -1,6 +1,4 @@
-// src/pages/AIFeedbackReport/ActionPlan.jsx
 
-import React from "react";
 import {
   Sparkles,
   TrendingUp,

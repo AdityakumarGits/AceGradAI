@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
@@ -8,20 +6,10 @@ import HistorySection from "./HistorySection";
 import AnalyticsSection from "./AnalyticsSection";
 
 import API from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
+//import { AuthProvider } from "./context/AuthContext";
 import InterviewConfig from "../InterviewConfig/InterviewConfig";
-
-import {
-  LayoutDashboard,
-  History,
-  BarChart3,
-  Flame,
-  LogOut,
-  UserCircle2,
-  Rocket,
-  Home,
-} from "lucide-react";
-
+import {LayoutDashboard,History,BarChart3,LogOut, UserCircle2, Rocket,Home,} from "lucide-react";
 import { candidateToast } from "../../utils/toast";
 
 export default function CandidateDashboard() {
@@ -38,18 +26,22 @@ export default function CandidateDashboard() {
   // Fetch Candidate Interviews
   // --------------------------------------------------
 
-  const handleData = async () => {
-    try {
-      setLoading(true);
+useEffect(() => {
+  let cancelled = false;
 
+  const fetchInterviews = async () => {
+    try {
       const response = await API.get("/interview/getAllInterviews");
 
-      const interviewData = response?.data?.data?.interviews || [];
+      if (cancelled) return;
+
+      const interviewData =
+        response?.data?.data?.interviews || [];
 
       setInterviews(interviewData);
-
       console.log("Candidate Interviews:", interviewData);
     } catch (error) {
+      if (cancelled) return;
       console.error("Failed to fetch interviews:", error);
 
       candidateToast.error(
@@ -57,13 +49,18 @@ export default function CandidateDashboard() {
           "Unable to load interview history"
       );
     } finally {
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     }
   };
 
-  useEffect(() => {
-    handleData();
-  }, []);
+  fetchInterviews();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   // --------------------------------------------------
   // Logout

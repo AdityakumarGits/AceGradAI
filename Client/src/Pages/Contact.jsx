@@ -1,10 +1,10 @@
-import { useState } from "react"
+//import { useState } from "react"
 
 
 
 const Contact = () => {
- const [email,setEmail]= useState("")
- const [detail,setDetails]=useState("");
+//  const [email,setEmail]= useState("")
+//  const [detail,setDetails]=useState("");
   return (
     <div>
       contact pages

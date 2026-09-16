@@ -1,6 +1,6 @@
-// src/Pages/AiFeedbackReport.jsx/AIFeedbackReport.jsx
 
-import React, { useEffect, useState } from "react";
+
+import  { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 
@@ -19,19 +19,18 @@ export default function AIFeedbackReport() {
   const [interview, setInterview] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchInterviewReport = async () => {
+useEffect(() => {
+  if (!interviewId) return;
+
+  let cancelled = false;
+
+  const fetchReport = async () => {
     try {
-      setLoading(true);
-
-      /*
-       * IMPORTANT:
-       * Is endpoint ko apne actual backend endpoint
-       * ke according match karna.
-       */
-
       const response = await API.get(
-  `/interview/${interviewId}/report`
-);
+        `/interview/getInterviewReport/${interviewId}`
+      );
+
+      if (cancelled) return;
 
       const data =
         response?.data?.data?.interview ||
@@ -41,21 +40,30 @@ export default function AIFeedbackReport() {
 
       setInterview(data);
     } catch (error) {
+      if (cancelled) return;
+
       console.error("Failed to fetch interview report:", error);
 
       candidateToast.error(
-        error?.response?.data?.message || "Unable to load interview report",
+        error?.response?.data?.message ||
+          "Unable to load interview report"
       );
     } finally {
-      setLoading(false);
+      if (!cancelled) {
+        setLoading(false);
+      }
     }
   };
 
-  useEffect(() => {
-    if (interviewId) {
-      fetchInterviewReport();
-    }
-  }, [interviewId]);
+  fetchReport();
+
+  return () => {
+    cancelled = true;
+  };
+}, [interviewId]);
+
+
+
 
   if (loading) {
     return (
