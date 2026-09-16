@@ -63,3 +63,17 @@ jobs:
 
       - name: Check server syntax
         run: node --check server.js
+
+  docker:
+    name: Docker Build CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build backend Docker image
+        run: docker build -t acegrad-backend:ci ./backend
+
+      - name: Build frontend Docker image
+        run: docker build -t acegrad-frontend:ci ./Client
