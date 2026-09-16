@@ -2,8 +2,9 @@ import express from "express";
 
 import { protect } from "../middlewares/protectedMiddleware.js";
 import {  startInterview,textToSpeech, submitAnswer,endInterview,  getAllInterviews, getInterviewDetails,getInterviewReport,}  from "../controller/interview.controller.js";
-import {verifyInterviewOtp,submitGuestAnswer,} from "../controller/interview.controller.js"; // Import new helpers
-import {startInterviewLimiter,submitAnswerLimiter,ttsLimiter,endInterviewLimiter, otpVerifyLimiter,} from "../middlewares/rateLimiter.js";
+ import {verifyInterviewOtp,submitGuestAnswer,} from "../controller/interview.controller.js"; // Import new helpers
+ import {startInterviewLimiter,submitAnswerLimiter,ttsLimiter,endInterviewLimiter, otpVerifyLimiter,} from "../middlewares/rateLimiter.js";
+
 import {resumeUpload, audioUpload} from "../middlewares/uploadMiddleware.js";
 const router = express.Router();
 

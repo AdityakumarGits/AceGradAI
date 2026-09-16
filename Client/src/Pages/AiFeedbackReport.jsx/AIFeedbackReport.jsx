@@ -27,8 +27,8 @@ useEffect(() => {
   const fetchReport = async () => {
     try {
       const response = await API.get(
-        `/interview/getInterviewReport/${interviewId}`
-      );
+  `/interview/${interviewId}/report`
+);
 
       if (cancelled) return;
 
@@ -103,15 +103,6 @@ useEffect(() => {
     );
   }
 
-  /*
-   * Support both:
-   *
-   * interview.evaluation
-   *
-   * and
-   *
-   * interview itself containing evaluation fields
-   */
 
   const evaluation = interview?.evaluation || interview;
 

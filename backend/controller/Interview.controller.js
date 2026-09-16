@@ -836,9 +836,8 @@ export const endInterview = async (req, res, next) => {
 
 
 
-// ==================================================
 // GET ALL INTERVIEWS
-// ==================================================
+
 
 export const getAllInterviews = async (req, res, next) => {
   try {
