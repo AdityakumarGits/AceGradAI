@@ -914,20 +914,30 @@ export const getInterviewReport = async (req, res, next) => {
       return next(new AppError("Interview ID is required", 400));
     }
 
-    const interview = await Interview.findOne({
-      _id: interviewId,
-      userId: req.user.id,
-    }).select(
-      "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt",
-    );
+ const interview = await Interview.findOne({
+  _id: interviewId,
+  userId: req.user.id,
+}).select(
+  "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt",
+);
 
-    if (!interview) {
-      return next(new AppError("Interview report not found", 404));
-    }
+if (!interview) {
+  return next(new AppError("Interview report not found", 404));
+}
 
-   if (interview.evaluation?.evaluationStatus !== "completed") {
+// LOG YAHAN LAGAO - check se pehle
+console.log("REPORT DEBUG:", {
+  interviewId,
+  evaluation: interview.evaluation,
+  status: interview.status,
+});
+
+if (interview.evaluation?.evaluationStatus !== "completed") {
   return next(
-    new AppError("Interview evaluation is still being processed", 400)
+    new AppError(
+      `Interview evaluation is still ${interview.evaluation?.evaluationStatus || "not started"}`,
+      400
+    )
   );
 }
 
