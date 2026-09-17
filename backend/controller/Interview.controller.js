@@ -761,11 +761,9 @@ export const endInterview = async (req, res, next) => {
 
 // Close interview immediately
 
-   interview.status = "completed";
-  interview.evaluationStatus = "processing";
-
-  await interview.save();
-
+ interview.status = "completed";
+interview.evaluation.evaluationStatus = "processing";
+await interview.save();
 
 // Send response immediately
 
@@ -774,7 +772,7 @@ export const endInterview = async (req, res, next) => {
   message: "Interview completed. Evaluation is being processed.",
   data: {
     status: interview.status,
-    evaluationStatus: interview.evaluationStatus,
+     evaluationStatus: interview.evaluation.evaluationStatus,
   },
 });
 
@@ -804,32 +802,30 @@ export const endInterview = async (req, res, next) => {
     if (!isValidEvaluation) {
       console.error("❌ Invalid AI Evaluation:", aiEvaluationReport);
 
-      interview.evaluationStatus = "failed";
-      await interview.save();
-
+     interview.evaluation.evaluationStatus = "failed";
+await interview.save();
       return;
     }
+interview.evaluation = {...aiEvaluationReport,
+  evaluationStatus: "completed",
+};
 
-    interview.evaluation = aiEvaluationReport;
-    interview.evaluationStatus = "completed";
-
-    await interview.save();
-
-    console.log("✅ Evaluation saved successfully");
+await interview.save();
+    console.log(" Evaluation saved successfully");
     io.to(`interview:${interviewId}`).emit("evaluation-completed", {
   interviewId,
   evaluation: aiEvaluationReport,
 });
   })
   .catch(async (error) => {
-    console.error("❌ Background AI Evaluation Error:", error);
+    console.error(" Background AI Evaluation Error:", error);
 
-    interview.evaluationStatus = "failed";
-
+  
+interview.evaluation.evaluationStatus = "failed";
     await interview.save();
   })
     } catch (error) {
-    console.error("❌ End Interview Error:", error);
+    console.error(" End Interview Error:", error);
     return next(error);
   }
 };
