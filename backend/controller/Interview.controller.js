@@ -925,7 +925,7 @@ export const getInterviewReport = async (req, res, next) => {
       return next(new AppError("Interview report not found", 404));
     }
 
-   if (interview.evaluationStatus !== "completed") {
+   if (interview.evaluation?.evaluationStatus !== "completed") {
   return next(
     new AppError("Interview evaluation is still being processed", 400)
   );
@@ -933,9 +933,7 @@ export const getInterviewReport = async (req, res, next) => {
 
     return res.status(200).json({
       status: "success",
-
       message: "Interview report fetched successfully",
-
       data: {
         interview,
       },
