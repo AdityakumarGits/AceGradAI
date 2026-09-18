@@ -761,18 +761,21 @@ export const endInterview = async (req, res, next) => {
 
 // Close interview immediately
 
- interview.status = "completed";
-interview.evaluation.evaluationStatus = "processing";
-await interview.save();
+ i// Close interview immediately
+interview.status = "completed";
 
+interview.evaluation = interview.evaluation || {};
+interview.evaluation.evaluationStatus = "processing";
+
+await interview.save();
 // Send response immediately
 
-  res.status(202).json({
+ res.status(202).json({
   status: "success",
   message: "Interview completed. Evaluation is being processed.",
   data: {
     status: interview.status,
-     evaluationStatus: interview.evaluation.evaluationStatus,
+    evaluationStatus: interview.evaluation.evaluationStatus,
   },
 });
 
@@ -801,7 +804,7 @@ await interview.save();
 
     if (!isValidEvaluation) {
       console.error("❌ Invalid AI Evaluation:", aiEvaluationReport);
-
+  interview.evaluation = interview.evaluation || {};
      interview.evaluation.evaluationStatus = "failed";
 await interview.save();
       return;
@@ -812,15 +815,18 @@ interview.evaluation = {...aiEvaluationReport,
 
 await interview.save();
     console.log(" Evaluation saved successfully");
-    io.to(`interview:${interviewId}`).emit("evaluation-completed", {
+
+    
+io.to(`interview:${interviewId}`).emit("evaluation-completed", {
   interviewId,
-  evaluation: aiEvaluationReport,
+  evaluation: interview.evaluation,
 });
   })
   .catch(async (error) => {
     console.error(" Background AI Evaluation Error:", error);
 
-  
+    interview.evaluation = interview.evaluation || {};
+
 interview.evaluation.evaluationStatus = "failed";
     await interview.save();
   })
@@ -913,6 +919,7 @@ export const getInterviewReport = async (req, res, next) => {
  const interview = await Interview.findOne({
   _id: interviewId,
   userId: req.user.id,
+   "evaluation.evaluationStatus": "completed",
 }).select(
   "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt",
 );
