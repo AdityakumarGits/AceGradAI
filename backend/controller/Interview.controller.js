@@ -761,7 +761,7 @@ export const endInterview = async (req, res, next) => {
 
 // Close interview immediately
 
- i// Close interview immediately
+// Close interview immediately
 interview.status = "completed";
 
 interview.evaluation = interview.evaluation || {};
