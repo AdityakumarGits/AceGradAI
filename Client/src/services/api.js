@@ -8,6 +8,10 @@ const API = axios.create({
   timeout: 30000,
 });
 
+// --------------------------------------------------
+// Request Interceptor
+// --------------------------------------------------
+
 API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem("token");
@@ -23,13 +27,35 @@ API.interceptors.request.use(
   }
 );
 
+// --------------------------------------------------
+// Response Interceptor
+// --------------------------------------------------
+
+let isRedirectingToLogin = false;
+
 API.interceptors.response.use(
   (response) => response,
 
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/candidatelogin";
+      // Prevent multiple API requests from
+      // triggering multiple redirects
+      if (!isRedirectingToLogin) {
+        isRedirectingToLogin = true;
+
+        console.warn("Authentication expired. Logging out...");
+
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
+
+        // Redirect only if not already on login page
+        if (window.location.pathname !== "/candidatelogin") {
+          window.location.replace("/candidatelogin");
+        } else {
+          isRedirectingToLogin = false;
+        }
+      }
     }
 
     return Promise.reject(error);

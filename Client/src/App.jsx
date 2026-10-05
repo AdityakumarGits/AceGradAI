@@ -14,107 +14,47 @@ import VerifyOTP from "./Pages/VerifyOTP";
 import PrivateRoute from "./context/PrivateRoute";
 import ForgotPassword from "./Pages/ForgotPassword";
 
-
 const App = () => {
   return (
     <Routes>
-
       {/* =====================================================
           LANDING
       ====================================================== */}
 
-      <Route
-        path="/"
-        element={<Home />}
-      />
+      <Route path="/" element={<Home />} />
 
       {/* =====================================================
           AUTH
       ====================================================== */}
 
-      <Route
-        path="/candidatesignup"
-        element={<CandidateSignup />}
-      />
+      <Route path="/candidatesignup" element={<CandidateSignup />} />
+      <Route path="/verifyotp" element={<VerifyOTP />} />
+      <Route path="/candidatelogin" element={<CandidateLogin />} />
+      <Route path="/companysignup" element={<CompanySignup />} />
+      <Route path="/companylogin" element={<CompanyLogin />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
-      <Route
-        path="/verifyotp"
-        element={<VerifyOTP />}
-      />
-
-      <Route
-        path="/candidatelogin"
-        element={<CandidateLogin />}
-      />
-
-      <Route
-        path="/companysignup"
-        element={<CompanySignup />}
-      />
-
-      <Route
-        path="/companylogin"
-        element={<CompanyLogin />}
-      />
-
-      <Route
-  path="/forgot-password"
-  element={<ForgotPassword />}
-/>
-
-      {/* =====================================================
-          PROTECTED CANDIDATE ROUTES
-      ====================================================== */}
+      {/*       
+    PROTECTED CANDIDATE ROUTES */}
 
       <Route element={<PrivateRoute />}>
-
-        {/* Candidate Dashboard */}
-
-        <Route
-          path="/candidatedashboard"
-          element={<CandidateDashboard />}
-        />
-
-        {/* Interview Setup */}
-
-        <Route
-          path="/interviewsetup"
-          element={<InterviewSetup />}
-        />
-
-        {/* Start Interview */}
-
-        <Route
-          path="/startinterview"
-          element={<StartInterview />}
-        />
-
-        {/* AI Feedback Report */}
-
-        <Route
-          path="/feedback/:interviewId"
-          element={<AIFeedbackReport />}
-        />
-
+        <Route path="/candidatedashboard" element={<CandidateDashboard />} />
+        <Route path="/interviewsetup" element={<InterviewSetup />} />
+        <Route path="/startinterview" element={<StartInterview />} />
+        <Route path="/feedback/:interviewId" element={<AIFeedbackReport />} />
       </Route>
 
       {/* =====================================================
           COMPANY
       ====================================================== */}
 
-      <Route
-        path="/companydashboard"
-        element={<CompanyDashboard />}
-      />
+      <Route path="/companydashboard" element={<CompanyDashboard />} />
 
       {/* =====================================================
           CONTACT
       ====================================================== */}
 
-      <Route
-        path="/contact"
-        element={<Contact />}
-      />
+      <Route path="/contact" element={<Contact />} />
 
       {/* =====================================================
           404
@@ -128,7 +68,6 @@ const App = () => {
           </div>
         }
       />
-
     </Routes>
   );
 };
