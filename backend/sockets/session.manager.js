@@ -1,9 +1,10 @@
 const sessions = new Map();
-let generationCounter = 0;
 
+let generationCounter = 0;
 
 const createGeneration = () => {
   generationCounter += 1;
+
   return generationCounter;
 };
 
@@ -20,13 +21,25 @@ export const createSession = ({
     interviewId,
     userId,
     activeSocketId: socketId,
+
+    // Interview lifecycle
+    interviewState: "started",
+
+    // Recording lifecycle
     recordingState: "idle",
+
+    // Future Deepgram streaming connection
     deepgramConnection: null,
+
+    // Cleanup protection
     isCleanedUp: false,
+
+    // Async operation protection
     generation: createGeneration(),
   };
 
   sessions.set(interviewId, session);
+
   return session;
 };
 
@@ -51,6 +64,34 @@ export const isSessionActive = (
   return true;
 };
 
+export const isValidInterviewState = (
+  interviewId,
+  expectedState,
+) => {
+  const session = sessions.get(interviewId);
+
+  if (!session || session.isCleanedUp) {
+    return false;
+  }
+
+  return session.interviewState === expectedState;
+};
+
+export const updateInterviewState = (
+  interviewId,
+  state,
+) => {
+  const session = sessions.get(interviewId);
+
+  if (!session || session.isCleanedUp) {
+    return false;
+  }
+
+  session.interviewState = state;
+
+  return true;
+};
+
 export const cleanupSession = (interviewId) => {
   const session = sessions.get(interviewId);
 
@@ -68,7 +109,7 @@ export const cleanupSession = (interviewId) => {
       session.deepgramConnection.finish();
     } catch (error) {
       console.error(
-        " Error closing Deepgram connection:",
+        "❌ Error closing Deepgram connection:",
         error.message,
       );
     }
@@ -78,7 +119,7 @@ export const cleanupSession = (interviewId) => {
 
   sessions.delete(interviewId);
 
-  console.log(" Interview session cleaned:", {
+  console.log("🧹 Interview session cleaned:", {
     interviewId,
     userId: session.userId,
     socketId: session.activeSocketId,
