@@ -1,4 +1,9 @@
 import https from "https";
+import { DeepgramClient } from "@deepgram/sdk";
+
+const deepgram = new DeepgramClient({
+  apiKey: process.env.DEEPGRAM_API_KEY,
+});
 
 export const transcribeAudio = async (audioBuffer) => {
   try {
@@ -25,7 +30,6 @@ export const transcribeAudio = async (audioBuffer) => {
           Host: "api.deepgram.com",
         },
 
-        // TLS SNI
         servername: "api.deepgram.com",
 
         timeout: 30000,
@@ -47,8 +51,8 @@ export const transcribeAudio = async (audioBuffer) => {
 
             return reject(
               new Error(
-                `Deepgram API returned status ${response.statusCode}`
-              )
+                `Deepgram API returned status ${response.statusCode}`,
+              ),
             );
           }
 
@@ -95,3 +99,5 @@ export const transcribeAudio = async (audioBuffer) => {
     throw error;
   }
 };
+
+export default deepgram;

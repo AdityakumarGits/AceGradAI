@@ -26,8 +26,9 @@
     "microsoft-cognitiveservices-speech-sdk": "^1.51.0",
     "mongoose": "^9.7.2",
     "multer": "^2.2.0",
-    "nodemon": "^3.1.14",
+    "nodemon": "^1.14.10",
     "pdf-parse": "^2.4.5",
-    "socket.io": "^4.8.3"
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.4"
   }
 }

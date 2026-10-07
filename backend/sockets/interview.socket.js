@@ -1,10 +1,12 @@
 import Interview from "../model/interview.model.js";
+import { createDeepgramConnection } from "../services/deepgramStreaming.service.js";
 
 import {
   getSession,
   createSession,
   cleanupSession,
   updateInterviewState,
+  isSessionActive,
 } from "./session.manager.js";
 
 export const registerInterviewSocket = (io, socket) => {
@@ -114,7 +116,7 @@ export const registerInterviewSocket = (io, socket) => {
   // RECORDING STARTED
   // ==========================================
 
-  socket.on("recording:started", (data = {}) => {
+  socket.on("recording:started", async (data = {}) => {
     try {
       const interviewId = socket.data.interviewId;
 
@@ -126,27 +128,99 @@ export const registerInterviewSocket = (io, socket) => {
 
       const session = getSession(interviewId);
 
-      // Session + socket validation
       if (!session || session.activeSocketId !== socket.id) {
         return socket.emit("interview:error", {
           message: "Invalid or expired interview session",
         });
       }
 
-      // Interview lifecycle validation
       if (session.interviewState !== "started") {
         return socket.emit("interview:error", {
           message: "Interview is not active",
         });
       }
 
-      // Recording state validation
       if (session.recordingState === "recording") {
         return socket.emit("interview:error", {
           message: "Recording is already active",
         });
       }
 
+      // ==========================================
+      // SAVE CURRENT GENERATION
+      // ==========================================
+
+      const generation = session.generation;
+
+      // ==========================================
+      // CREATE DEEPGRAM CONNECTION
+      // ==========================================
+
+      const connection = await createDeepgramConnection({
+        socket,
+
+        onError: (error) => {
+          if (!isSessionActive(interviewId, generation)) {
+            return;
+          }
+
+          console.error(
+            "❌ Deepgram error for interview:",
+            interviewId,
+            error?.message || error,
+          );
+
+          socket.emit("interview:error", {
+            message: "Speech recognition connection failed",
+          });
+
+          cleanupSession(interviewId);
+
+          socket.data.interviewId = null;
+        },
+
+        onClose: () => {
+          if (!isSessionActive(interviewId, generation)) {
+            return;
+          }
+
+          const currentSession = getSession(interviewId);
+
+          if (!currentSession) {
+            return;
+          }
+
+          currentSession.deepgramConnection = null;
+
+          console.log("🔌 Deepgram connection closed:", {
+            interviewId,
+            socketId: socket.id,
+          });
+        },
+      });
+
+      // ==========================================
+      // SESSION MAY HAVE BEEN REPLACED
+      // ==========================================
+
+      if (!isSessionActive(interviewId, generation)) {
+        try {
+          connection.finish();
+        } catch (error) {
+          console.error(
+            "❌ Error closing stale Deepgram connection:",
+            error.message,
+          );
+        }
+
+        return;
+      }
+
+      // ==========================================
+      // SAVE DEEPGRAM CONNECTION
+      // ==========================================
+
+      session.deepgramConnection = connection;
       session.recordingState = "recording";
 
       socket.emit("recording:started", {
@@ -172,10 +246,10 @@ export const registerInterviewSocket = (io, socket) => {
 
 
   // ==========================================
-  // RECORDING STOPPED
+  // AUDIO CHUNK
   // ==========================================
 
-  socket.on("recording:stopped", (data = {}) => {
+  socket.on("audio:chunk", (audioChunk) => {
     try {
       const interviewId = socket.data.interviewId;
 
@@ -187,33 +261,130 @@ export const registerInterviewSocket = (io, socket) => {
 
       const session = getSession(interviewId);
 
-      // Session + socket validation
       if (!session || session.activeSocketId !== socket.id) {
         return socket.emit("interview:error", {
           message: "Invalid or expired interview session",
         });
       }
 
-      // Recording state validation
       if (session.recordingState !== "recording") {
         return socket.emit("interview:error", {
           message: "Recording is not active",
         });
       }
 
-      session.recordingState = "idle";
+      if (!session.deepgramConnection) {
+        return socket.emit("interview:error", {
+          message: "Deepgram connection is not available",
+        });
+      }
 
-      socket.emit("recording:stopped", {
+      if (!audioChunk) {
+        return;
+      }
+
+      session.deepgramConnection.sendMedia(audioChunk);
+
+    } catch (error) {
+      console.error("❌ Audio chunk error:", error);
+
+      socket.emit("interview:error", {
+        message: "Unable to process audio chunk",
+      });
+    }
+  });
+
+
+  // ==========================================
+  // RECORDING STOPPED
+  // ==========================================
+
+  socket.on("recording:stopped", async (data = {}) => {
+    try {
+      const interviewId = socket.data.interviewId;
+
+      if (!interviewId) {
+        return socket.emit("interview:error", {
+          message: "No active interview session",
+        });
+      }
+
+      const session = getSession(interviewId);
+
+      if (!session || session.activeSocketId !== socket.id) {
+        return socket.emit("interview:error", {
+          message: "Invalid or expired interview session",
+        });
+      }
+
+      if (session.recordingState !== "recording") {
+        return socket.emit("interview:error", {
+          message: "Recording is not active",
+        });
+      }
+
+      if (!session.deepgramConnection) {
+        return socket.emit("interview:error", {
+          message: "Deepgram connection is not available",
+        });
+      }
+
+      // ==========================================
+      // SAVE CURRENT GENERATION
+      // ==========================================
+
+      const generation = session.generation;
+      const connection = session.deepgramConnection;
+
+      // ==========================================
+      // FINALIZE DEEPGRAM
+      // ==========================================
+
+      connection.sendFinalize();
+
+      console.log("⏳ Deepgram finalizing:", {
         interviewId,
         questionNumber: data.questionNumber ?? null,
-        status: "stopped",
       });
 
-      console.log("⏹️ Recording stopped:", {
-        interviewId,
-        socketId: socket.id,
-        questionNumber: data.questionNumber ?? null,
-      });
+      // ==========================================
+      // CLOSE AFTER FINAL TRANSCRIPT
+      // ==========================================
+
+      setTimeout(() => {
+        if (!isSessionActive(interviewId, generation)) {
+          return;
+        }
+
+        if (session.deepgramConnection !== connection) {
+          return;
+        }
+
+        try {
+          connection.sendCloseStream();
+        } catch (error) {
+          console.error(
+            "❌ Error closing Deepgram stream:",
+            error.message,
+          );
+        }
+
+        session.deepgramConnection = null;
+        session.recordingState = "idle";
+
+        socket.emit("recording:stopped", {
+          interviewId,
+          questionNumber: data.questionNumber ?? null,
+          status: "stopped",
+        });
+
+        console.log("⏹️ Recording stopped:", {
+          interviewId,
+          socketId: socket.id,
+          questionNumber: data.questionNumber ?? null,
+        });
+
+      }, 500);
 
     } catch (error) {
       console.error("❌ Recording stop error:", error);
@@ -241,21 +412,30 @@ export const registerInterviewSocket = (io, socket) => {
 
       const session = getSession(interviewId);
 
-      // Session + socket validation
+      // ==========================================
+      // SESSION + SOCKET VALIDATION
+      // ==========================================
+
       if (!session || session.activeSocketId !== socket.id) {
         return socket.emit("interview:error", {
           message: "Invalid or expired interview session",
         });
       }
 
-      // Cannot complete while recording
+      // ==========================================
+      // CANNOT COMPLETE WHILE RECORDING
+      // ==========================================
+
       if (session.recordingState === "recording") {
         return socket.emit("interview:error", {
           message: "Stop recording before completing the interview",
         });
       }
 
-      // Update lifecycle state
+      // ==========================================
+      // UPDATE INTERVIEW STATE
+      // ==========================================
+
       updateInterviewState(interviewId, "completed");
 
       socket.emit("interview:completed", {
@@ -268,7 +448,10 @@ export const registerInterviewSocket = (io, socket) => {
         socketId: socket.id,
       });
 
-      // Cleanup session
+      // ==========================================
+      // CLEANUP SESSION
+      // ==========================================
+
       cleanupSession(interviewId);
 
       socket.data.interviewId = null;
