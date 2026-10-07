@@ -27,6 +27,7 @@ export const createSession = ({
 
     // Recording lifecycle
     recordingState: "idle",
+    audioReceived: false,
 
     // Phase 5
     currentQuestionIndex: 0,
@@ -113,7 +114,7 @@ export const cleanupSession = (interviewId) => {
       session.deepgramConnection.sendCloseStream();
     } catch (error) {
       console.error(
-        "❌ Error closing Deepgram connection:",
+        " Error closing Deepgram connection:",
         error.message,
       );
     }
@@ -123,7 +124,7 @@ export const cleanupSession = (interviewId) => {
 
   sessions.delete(interviewId);
 
-  console.log("🧹 Interview session cleaned:", {
+  console.log(" Interview session cleaned:", {
     interviewId,
     userId: session.userId,
     socketId: session.activeSocketId,
