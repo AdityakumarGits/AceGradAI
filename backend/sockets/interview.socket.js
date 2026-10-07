@@ -1,6 +1,5 @@
 import Interview from "../model/interview.model.js";
 import { createDeepgramConnection } from "../services/deepgramStreaming.service.js";
-
 import {
   getSession,
   createSession,
@@ -10,11 +9,6 @@ import {
 } from "./session.manager.js";
 
 export const registerInterviewSocket = (io, socket) => {
-
-  // ==========================================
-  // JOIN INTERVIEW
-  // ==========================================
-
   socket.on("join-interview", async (interviewId) => {
     try {
       if (!interviewId) {
@@ -101,7 +95,6 @@ export const registerInterviewSocket = (io, socket) => {
         interviewId,
         questionNumber: 1,
       });
-
     } catch (error) {
       console.error("❌ Interview socket error:", error);
 
@@ -110,7 +103,6 @@ export const registerInterviewSocket = (io, socket) => {
       });
     }
   });
-
 
   // ==========================================
   // RECORDING STARTED
@@ -145,27 +137,32 @@ export const registerInterviewSocket = (io, socket) => {
           message: "Recording is already active",
         });
       }
-
-      // ==========================================
-      // SAVE CURRENT GENERATION
-      // ==========================================
+      if (session.answerProcessing) {
+        return socket.emit("interview:error", {
+          message: "Previous answer is still being processed",
+        });
+      }
 
       const generation = session.generation;
-
-      // ==========================================
-      // CREATE DEEPGRAM CONNECTION
-      // ==========================================
-
       const connection = await createDeepgramConnection({
         socket,
 
         onError: (error) => {
           if (!isSessionActive(interviewId, generation)) {
+            try {
+              connection.sendCloseStream();
+            } catch (error) {
+              console.error(
+                " Error closing stale Deepgram connection:",
+                error.message,
+              );
+            }
+
             return;
           }
 
           console.error(
-            "❌ Deepgram error for interview:",
+            " Deepgram error for interview:",
             interviewId,
             error?.message || error,
           );
@@ -197,58 +194,178 @@ export const registerInterviewSocket = (io, socket) => {
             socketId: socket.id,
           });
         },
+
+        onFinalTranscript: async (transcript) => {
+          const session = getSession(interviewId);
+
+          try {
+            if (!isSessionActive(interviewId, generation)) {
+              return;
+            }
+
+            if (!session) {
+              return;
+            }
+
+            if (session.answerProcessing) {
+              console.log("⚠️ Answer already processing");
+              return;
+            }
+
+            session.answerProcessing = true;
+
+            const interview = await Interview.findOne({
+              _id: interviewId,
+              userId: socket.user.id,
+            });
+
+            if (!interview) {
+              socket.emit("interview:error", {
+                message: "Interview not found or unauthorized access",
+              });
+
+              return;
+            }
+
+            if (interview.status !== "active") {
+              socket.emit("interview:error", {
+                message: "Interview session is not active",
+              });
+
+              return;
+            }
+
+            const questionIndex = interview.answers.length;
+
+            const questionText = interview.questions[questionIndex];
+
+            if (!questionText) {
+              socket.emit("interview:error", {
+                message: "Invalid question sequence",
+              });
+
+              return;
+            }
+
+            const alreadyAnswered = interview.answers.some(
+              (answer) => answer.questionIndex === questionIndex,
+            );
+
+            if (alreadyAnswered) {
+              console.log("⚠️ Question already answered:", questionIndex);
+
+              return;
+            }
+
+            interview.answers.push({
+              questionIndex,
+              questionText,
+              userAnswer: transcript.trim(),
+            });
+
+            await interview.save();
+
+            console.log("💾 Answer saved:", {
+              interviewId,
+              questionIndex,
+              answersCount: interview.answers.length,
+            });
+
+            try {
+              connection.sendCloseStream();
+            } catch (error) {
+              console.error(" Error closing Deepgram stream:", error.message);
+            }
+
+            if (session.deepgramConnection === connection) {
+              session.deepgramConnection = null;
+            }
+
+            session.recordingState = "idle";
+
+            socket.emit("recording:stopped", {
+              interviewId,
+              questionNumber: questionIndex + 1,
+              status: "stopped",
+            });
+
+            const nextQuestionIndex = questionIndex + 1;
+
+            if (nextQuestionIndex < interview.questions.length) {
+              const nextQuestion = interview.questions[nextQuestionIndex];
+
+              session.currentQuestionIndex = nextQuestionIndex;
+
+              socket.emit("question:next", {
+                interviewId,
+                questionIndex: nextQuestionIndex,
+                questionNumber: nextQuestionIndex + 1,
+                question: nextQuestion,
+              });
+
+              socket.emit("question:started", {
+                interviewId,
+                questionNumber: nextQuestionIndex + 1,
+              });
+
+              console.log("➡️ Next question:", {
+                interviewId,
+                questionNumber: nextQuestionIndex + 1,
+              });
+            } else {
+              session.interviewState = "questions-completed";
+
+              socket.emit("interview:questions-completed", {
+                interviewId,
+                totalQuestions: interview.questions.length,
+                totalAnswers: interview.answers.length,
+              });
+
+              console.log("🏁 All interview questions completed:", {
+                interviewId,
+                totalQuestions: interview.questions.length,
+                totalAnswers: interview.answers.length,
+              });
+            }
+          } catch (error) {
+            console.error(" Final transcript processing error:", error);
+
+            socket.emit("interview:error", {
+              message: "Unable to process final transcript",
+            });
+          } finally {
+            const currentSession = getSession(interviewId);
+
+            if (currentSession) {
+              currentSession.answerProcessing = false;
+            }
+          }
+        },
       });
-
-      // ==========================================
-      // SESSION MAY HAVE BEEN REPLACED
-      // ==========================================
-
       if (!isSessionActive(interviewId, generation)) {
-        try {
-          connection.finish();
-        } catch (error) {
-          console.error(
-            "❌ Error closing stale Deepgram connection:",
-            error.message,
-          );
-        }
+  try {
+    connection.sendCloseStream();
+  } catch (error) {
+    console.error(
+      " Error closing stale Deepgram connection:",
+      error.message,
+    );
+  }
 
-        return;
-      }
-
-      // ==========================================
-      // SAVE DEEPGRAM CONNECTION
-      // ==========================================
-
+  return;
+}
       session.deepgramConnection = connection;
       session.recordingState = "recording";
 
-      socket.emit("recording:started", {
-        interviewId,
-        questionNumber: data.questionNumber ?? null,
-        status: "recording",
-      });
-
-      console.log("🎙️ Recording started:", {
-        interviewId,
-        socketId: socket.id,
-        questionNumber: data.questionNumber ?? null,
-      });
-
+      socket.emit("recording:started", { interviewId });
     } catch (error) {
-      console.error("❌ Recording start error:", error);
+      console.error(" Recording start error:", error);
 
       socket.emit("interview:error", {
         message: "Unable to start recording",
       });
     }
   });
-
-
-  // ==========================================
-  // AUDIO CHUNK
-  // ==========================================
-
   socket.on("audio:chunk", (audioChunk) => {
     try {
       const interviewId = socket.data.interviewId;
@@ -284,7 +401,6 @@ export const registerInterviewSocket = (io, socket) => {
       }
 
       session.deepgramConnection.sendMedia(audioChunk);
-
     } catch (error) {
       console.error("❌ Audio chunk error:", error);
 
@@ -293,7 +409,6 @@ export const registerInterviewSocket = (io, socket) => {
       });
     }
   });
-
 
   // ==========================================
   // RECORDING STOPPED
@@ -342,50 +457,10 @@ export const registerInterviewSocket = (io, socket) => {
 
       connection.sendFinalize();
 
-      console.log("⏳ Deepgram finalizing:", {
+      console.log(" Deepgram finalizing:", {
         interviewId,
         questionNumber: data.questionNumber ?? null,
       });
-
-      // ==========================================
-      // CLOSE AFTER FINAL TRANSCRIPT
-      // ==========================================
-
-      setTimeout(() => {
-        if (!isSessionActive(interviewId, generation)) {
-          return;
-        }
-
-        if (session.deepgramConnection !== connection) {
-          return;
-        }
-
-        try {
-          connection.sendCloseStream();
-        } catch (error) {
-          console.error(
-            "❌ Error closing Deepgram stream:",
-            error.message,
-          );
-        }
-
-        session.deepgramConnection = null;
-        session.recordingState = "idle";
-
-        socket.emit("recording:stopped", {
-          interviewId,
-          questionNumber: data.questionNumber ?? null,
-          status: "stopped",
-        });
-
-        console.log("⏹️ Recording stopped:", {
-          interviewId,
-          socketId: socket.id,
-          questionNumber: data.questionNumber ?? null,
-        });
-
-      }, 500);
-
     } catch (error) {
       console.error("❌ Recording stop error:", error);
 
@@ -395,10 +470,7 @@ export const registerInterviewSocket = (io, socket) => {
     }
   });
 
-
-  // ==========================================
   // INTERVIEW COMPLETED
-  // ==========================================
 
   socket.on("interview:completed", () => {
     try {
@@ -431,7 +503,11 @@ export const registerInterviewSocket = (io, socket) => {
           message: "Stop recording before completing the interview",
         });
       }
-
+      if (session.answerProcessing) {
+        return socket.emit("interview:error", {
+          message: "Previous answer is still being processed",
+        });
+      }
       // ==========================================
       // UPDATE INTERVIEW STATE
       // ==========================================
@@ -455,7 +531,6 @@ export const registerInterviewSocket = (io, socket) => {
       cleanupSession(interviewId);
 
       socket.data.interviewId = null;
-
     } catch (error) {
       console.error("❌ Interview completion error:", error);
 

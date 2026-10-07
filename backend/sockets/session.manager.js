@@ -28,7 +28,11 @@ export const createSession = ({
     // Recording lifecycle
     recordingState: "idle",
 
-    // Future Deepgram streaming connection
+    // Phase 5
+    currentQuestionIndex: 0,
+    answerProcessing: false,
+
+    // Deepgram streaming connection
     deepgramConnection: null,
 
     // Cleanup protection
@@ -106,7 +110,7 @@ export const cleanupSession = (interviewId) => {
 
   if (session.deepgramConnection) {
     try {
-      session.deepgramConnection.finish();
+      session.deepgramConnection.sendCloseStream();
     } catch (error) {
       console.error(
         "❌ Error closing Deepgram connection:",
