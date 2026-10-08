@@ -1,6 +1,7 @@
 import Interview from "../model/interview.model.js";
 
 import { createDeepgramConnection } from "../services/deepgramStreaming.service.js";
+import { startInterviewEvaluation } from "../services/interviewEvaluation.service.js";
 
 import {
   getSession,
@@ -633,84 +634,91 @@ export const registerInterviewSocket = (io, socket) => {
   // INTERVIEW COMPLETED
   // ==========================================
 
-  socket.on("interview:completed", () => {
-    try {
-      const interviewId = socket.data.interviewId;
+  // ==========================================
+// INTERVIEW COMPLETED
+// ==========================================
 
-      if (!interviewId) {
-        return socket.emit("interview:error", {
-          message: "No active interview session",
-        });
-      }
+socket.on("interview:completed", async () => {
+  try {
+    const interviewId = socket.data.interviewId;
 
-      const session = getSession(interviewId);
-
-      // ==========================================
-      // SESSION + SOCKET VALIDATION
-      // ==========================================
-
-      if (
-        !session ||
-        session.activeSocketId !== socket.id
-      ) {
-        return socket.emit("interview:error", {
-          message: "Invalid or expired interview session",
-        });
-      }
-
-      // ==========================================
-      // CANNOT COMPLETE WHILE RECORDING
-      // ==========================================
-
-      if (session.recordingState === "recording") {
-        return socket.emit("interview:error", {
-          message:
-            "Stop recording before completing the interview",
-        });
-      }
-
-      if (session.answerProcessing) {
-        return socket.emit("interview:error", {
-          message:
-            "Previous answer is still being processed",
-        });
-      }
-
-      // ==========================================
-      // UPDATE INTERVIEW STATE
-      // ==========================================
-
-      updateInterviewState(
-        interviewId,
-        "completed",
-      );
-
-      socket.emit("interview:completed", {
-        interviewId,
-        status: "completed",
-      });
-
-      console.log("🏁 Interview completed:", {
-        interviewId,
-        socketId: socket.id,
-      });
-
-      // ==========================================
-      // CLEANUP SESSION
-      // ==========================================
-
-      cleanupSession(interviewId);
-
-      socket.data.interviewId = null;
-    } catch (error) {
-      console.error(
-        "❌ Interview completion error:",
-        error,
-      );
-
-      socket.emit("interview:error", {
-        message: "Unable to complete interview",
+    if (!interviewId) {
+      return socket.emit("interview:error", {
+        message: "No active interview session",
       });
     }
-  });
+
+    const session = getSession(interviewId);
+
+    if (
+      !session ||
+      session.activeSocketId !== socket.id
+    ) {
+      return socket.emit("interview:error", {
+        message: "Invalid or expired interview session",
+      });
+    }
+
+    if (session.recordingState === "recording") {
+      return socket.emit("interview:error", {
+        message:
+          "Stop recording before completing the interview",
+      });
+    }
+
+    if (session.answerProcessing) {
+      return socket.emit("interview:error", {
+        message:
+          "Previous answer is still being processed",
+      });
+    }
+
+
+    // ==========================================
+    // START AI EVALUATION
+    // ==========================================
+
+    const result = await startInterviewEvaluation({
+      interviewId,
+      userId: socket.user.id,
+      io,
+    });
+
+
+    // ==========================================
+    // INFORM SOCKET
+    // ==========================================
+
+    socket.emit("interview:completed", {
+      interviewId,
+      status: result.status,
+    });
+
+
+    console.log("🏁 Interview completed:", {
+      interviewId,
+      socketId: socket.id,
+    });
+
+
+    // ==========================================
+    // CLEANUP SOCKET SESSION
+    // ==========================================
+
+    cleanupSession(interviewId);
+
+    socket.data.interviewId = null;
+
+  } catch (error) {
+    console.error(
+      "❌ Interview completion error:",
+      error,
+    );
+
+    socket.emit("interview:error", {
+      message: error.message ||
+        "Unable to complete interview",
+    });
+  }
+});
 };

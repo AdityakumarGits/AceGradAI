@@ -109,9 +109,7 @@ useEffect(() => {
   const answers = interview?.answers || interview?.responses || [];
 
   const questionWiseEvaluation =
-    interview?.questionWiseEvaluation ||
-    interview?.evaluation?.questionWiseEvaluation ||
-    [];
+    interview?.evaluation?.questionWiseEvaluation || [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#030712] via-[#070f2b] to-[#0f172a] px-6 py-8 text-[#eaecf0] lg:px-10">

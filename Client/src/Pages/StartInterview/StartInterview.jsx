@@ -120,10 +120,10 @@ useEffect(() => {
   console.log("👤 Joined interview room:", interviewID);
 
   const handleEvaluationCompleted = (data) => {
-    console.log("🎉 Evaluation completed:", data);
+    console.log(" Evaluation completed:", data);
 
     if (data?.interviewId !== interviewID) {
-      console.warn("⚠️ Wrong interview evaluation received");
+      console.warn(" Wrong interview evaluation received");
       return;
     }
 
@@ -136,15 +136,48 @@ useEffect(() => {
 
     clearActiveInterview();
 
-    console.log("✅ Evaluation received successfully");
+    console.log(" Evaluation received successfully");
+     navigate(`/feedback/${interviewID}`, {
+    replace: true,
+  });
   };
+  const handleEvaluationFailed = (data) => {
+  console.error("❌ Evaluation failed:", data);
+
+  if (data?.interviewId !== interviewID) {
+    console.warn("⚠️ Wrong interview evaluation received");
+    return;
+  }
+
+  setIsEvaluating(false);
+  setIsComplete(true);
+
+  isEvaluatingRef.current = false;
+
+  setEvaluationError(true);
+
+  setErrorMsg(
+    data?.message ||
+      "AI evaluation failed. Please try again."
+  );
+
+  console.log("⚠️ AI evaluation failed");
+};
 
   socket.on("evaluation-completed", handleEvaluationCompleted);
 
+  socket.on(
+  "evaluation-failed",
+  handleEvaluationFailed
+);
   return () => {
     console.log("🔌 Disconnecting WebSocket");
 
     socket.off("evaluation-completed", handleEvaluationCompleted);
+   socket.off(
+  "evaluation-failed",
+  handleEvaluationFailed
+);
     socket.disconnect();
   };
 }, [interviewID]);
@@ -353,7 +386,7 @@ interviewIdRef.current = interview._id;
       setErrorMsg(
         error.response?.data?.message ||
           error.message ||
-          "Interview recover nahi ho paya.",
+          "Interview doesn't recover .",
       );
 
       return false;
@@ -479,7 +512,7 @@ interviewIdRef.current = interview._id;
       setErrorMsg(
         error.response?.data?.message ||
           error.message ||
-          "Interview start nahi ho paya.",
+          "Interview  doesn't start .",
       );
 
       interviewStartedRef.current = false;
@@ -521,7 +554,7 @@ interviewIdRef.current = interview._id;
 
         await handleStartInterview();
       } catch (error) {
-        console.error("❌ Interview initialization error:", error);
+        console.error(" Interview initialization error:", error);
         setErrorMsg(error?.message || "Interview initialization failed.");
       }
     };
@@ -537,7 +570,7 @@ interviewIdRef.current = interview._id;
 
   useEffect(() => {
     const handleOffline = () => {
-      console.warn("📴 Browser went offline.");
+      console.warn(" Browser went offline.");
 
       setIsOffline(true);
 
@@ -1382,57 +1415,205 @@ if (nextQuestionText) {
   // 17. END INTERVIEW
   // =========================================================
 
-  const finishInterview = async () => {
+ const finishInterview = async () => {
   if (isEvaluatingRef.current) {
     return;
   }
-    isEvaluatingRef.current = true;
-      const interviewId = interviewIdRef.current;
 
-      if (!interviewId) {
+  isEvaluatingRef.current = true;
+
+  const interviewId = interviewIdRef.current;
+
+  if (!interviewId) {
     isEvaluatingRef.current = false;
     return;
   }
 
+  if (isOffline) {
+    setErrorMsg(
+      "Internet connection lost. Please reconnect.",
+    );
 
-    if (isOffline) {
-      setErrorMsg(
-        "Internet connection lost. Please reconnect.",
-      );
+    isEvaluatingRef.current = false;
+    return;
+  }
 
-      return;
-    }
+  try {
+    setErrorMsg(null);
+    setEvaluationError(false);
+    setIsEvaluating(true);
 
-    try {
-      setErrorMsg(null);
-      setEvaluationError(false);
-      setIsEvaluating(true);
     console.log("🏁 Ending interview:", interviewId);
-  const response = await API.post("/interview/endInterview", {
-  interviewId,
-});
 
-     console.log("📊 Interview End Response:", response.data);
+    const response = await API.post(
+      "/interview/endInterview",
+      {
+        interviewId,
+      },
+    );
 
-setIsComplete(true);
-clearActiveInterview();
-console.log( "⏳ Interview completed. Waiting for AI evaluation via WebSocket...");
-    } catch (error) {
-      
-      console.error("❌ End Interview Error:", error);
-      console.log("STATUS:", error.response?.status);
-      console.log("BACKEND RESPONSE:", error.response?.data);
-      isEvaluatingRef.current = false;
-setIsEvaluating(false);
-      setEvaluationError(true);
-      setErrorMsg(
-        error.response?.data?.message ||
-          "We couldn't generate your evaluation. Your answers are safely saved. Please retry.",
+    console.log(
+      "📊 Interview End Response:",
+      response.data,
+    );
+
+    setIsComplete(true);
+    clearActiveInterview();
+
+    console.log(
+      "⏳ Interview completed. Waiting for AI evaluation..."
+    );
+
+    // ==========================================
+    // WAIT FOR AI EVALUATION
+    // ==========================================
+
+    const waitForEvaluation = async () => {
+      const maxAttempts = 30;
+      const interval = 2000;
+
+      for (
+        let attempt = 1;
+        attempt <= maxAttempts;
+        attempt++
+      ) {
+        try {
+          console.log(
+            `🔍 Checking evaluation status... ${attempt}/${maxAttempts}`
+          );
+
+          const reportResponse = await API.get(
+            `/interview/${interviewId}/report`
+          );
+
+          const interview =
+            reportResponse?.data?.data?.interview ||
+            reportResponse?.data?.data ||
+            reportResponse?.data?.interview;
+
+          const evaluationStatus =
+            interview?.evaluation?.evaluationStatus;
+
+          console.log(
+            "📊 Evaluation status:",
+            evaluationStatus
+          );
+
+          // ==========================================
+          // EVALUATION COMPLETED
+          // ==========================================
+
+          if (
+            evaluationStatus === "completed"
+          ) {
+            console.log(
+              "🎉 Evaluation is ready!"
+            );
+
+            setEvaluation(
+              interview.evaluation
+            );
+
+            setIsEvaluating(false);
+            setIsComplete(true);
+
+            isEvaluatingRef.current = false;
+
+            clearActiveInterview();
+
+            navigate(
+              `/feedback/${interviewId}`,
+              {
+                replace: true,
+              }
+            );
+
+            return;
+          }
+
+          // ==========================================
+          // EVALUATION FAILED
+          // ==========================================
+
+          if (
+            evaluationStatus === "failed"
+          ) {
+            console.error(
+              "❌ AI evaluation failed"
+            );
+
+            setIsEvaluating(false);
+            setIsComplete(true);
+
+            isEvaluatingRef.current = false;
+
+            setEvaluationError(true);
+
+            setErrorMsg(
+              "AI evaluation failed. Please try again."
+            );
+
+            return;
+          }
+        } catch (error) {
+          console.log(
+            "⏳ Evaluation not ready yet..."
+          );
+        }
+
+        // Wait 2 seconds before next check
+        await new Promise((resolve) =>
+          setTimeout(resolve, interval)
+        );
+      }
+
+      // ==========================================
+      // TIMEOUT
+      // ==========================================
+
+      console.error(
+        "❌ Evaluation timeout after 60 seconds"
       );
 
-  
-    } 
-  };
+      setIsEvaluating(false);
+      isEvaluatingRef.current = false;
+
+      setEvaluationError(true);
+
+      setErrorMsg(
+        "Evaluation is taking longer than expected. Please try again."
+      );
+    };
+
+    waitForEvaluation();
+
+  } catch (error) {
+    console.error(
+      "❌ End Interview Error:",
+      error
+    );
+
+    console.log(
+      "STATUS:",
+      error.response?.status
+    );
+
+    console.log(
+      "BACKEND RESPONSE:",
+      error.response?.data
+    );
+
+    isEvaluatingRef.current = false;
+
+    setIsEvaluating(false);
+    setEvaluationError(true);
+
+    setErrorMsg(
+      error.response?.data?.message ||
+        "We couldn't generate your evaluation. Your answers are safely saved. Please retry."
+    );
+  }
+};
 
   // =========================================================
   // 18. MANUAL STOP
@@ -1504,7 +1685,7 @@ setIsEvaluating(false);
           <h2 className="text-3xl font-bold text-white">Interview Complete!</h2>
           <p className="mt-2 text-[#9aa1b4]">Your AI evaluation is ready.</p>
   <button
-  onClick={() => navigate("/candidate-dashboard", { replace: true })}
+  onClick={() => navigate("/candidatedashboard", { replace: true })}
   className="flex items-center justify-center gap-2 rounded-xl bg-red-600 px-6 py-3 font-semibold text-white transition hover:bg-red-700"
 >
   <Home size={18} />

@@ -4,10 +4,13 @@ import User from "../model/user.model.js";
 import crypto from "crypto";
 import {
   generateInterviewQuestions,
-  evaluateInterviewSession,
+ 
   generateResumeInterviewQuestions,
   generateTopicInterviewQuestions,
 } from "../services/gemini.service.js";
+import {
+  startInterviewEvaluation,
+} from "../services/interviewEvaluation.service.js";
 import jwt from "jsonwebtoken";
 import { PDFParse } from "pdf-parse";
 import { transcribeAudio } from "../services/deepgram.service.js";
@@ -541,10 +544,8 @@ export const submitAnswer = async (req, res, next) => {
       return next(new AppError("Audio answer file is required", 400));
     }
 
-    // --------------------------------------------------
+   
     // 2. Find Interview
-    // --------------------------------------------------
-
     const interview = await Interview.findOne({
       _id: interviewId,
       userId: req.user.id,
@@ -556,10 +557,8 @@ export const submitAnswer = async (req, res, next) => {
       );
     }
 
-    // --------------------------------------------------
+   
     // 3. Interview Status Validation
-    // --------------------------------------------------
-
     if (interview.status === "completed") {
       return next(
         new AppError("This interview session is already completed", 400),
@@ -570,10 +569,8 @@ export const submitAnswer = async (req, res, next) => {
       return next(new AppError("Interview session is not active", 400));
     }
 
-    // --------------------------------------------------
+    
     // 4. Question Validation
-    // --------------------------------------------------
-
     const parsedQuestionIndex = Number(questionIndex);
 
     if (!Number.isInteger(parsedQuestionIndex) || parsedQuestionIndex < 0) {
@@ -608,7 +605,7 @@ export const submitAnswer = async (req, res, next) => {
     // 6. Audio Debug Information
     // --------------------------------------------------
 
-    console.log("🎤 Audio received by backend:", {
+    console.log(" Audio received by backend:", {
       mimetype: req.file.mimetype,
       size: req.file.size,
       originalname: req.file.originalname,
@@ -622,15 +619,9 @@ export const submitAnswer = async (req, res, next) => {
       req.file.buffer.subarray(0, 20).toString("hex"),
     );
 
-    // --------------------------------------------------
+   
     // 7. Deepgram Speech-to-Text
-    // --------------------------------------------------
-
-
-fs.writeFileSync("/tmp/test-answer.webm", req.file.buffer);
-console.log("💾 Test audio saved:", req.file.buffer.length);
     const transcript = await transcribeAudio(req.file.buffer);
-
     console.log(" Deepgram Transcript:", transcript);
 
     // 8. Empty Transcript Protection
@@ -685,10 +676,11 @@ console.log("💾 Test audio saved:", req.file.buffer.length);
   },
 });
   } catch (error) {
-    console.error("❌ Submit Answer Error:", error);
+    console.error(" Submit Answer Error:", error);
     return next(error);
   }
 };
+
 
 // ==================================================
 // END INTERVIEW
@@ -698,144 +690,43 @@ export const endInterview = async (req, res, next) => {
   try {
     const { interviewId } = req.body;
 
-
-
     if (!interviewId) {
       return next(
-        new AppError("Interview ID is required to process evaluation", 400),
+        new AppError(
+          "Interview ID is required to process evaluation",
+          400,
+        ),
       );
     }
 
-    const interview = await Interview.findOne({
-      _id: interviewId,
+
+    const result = await startInterviewEvaluation({
+      interviewId,
       userId: req.user.id,
     });
 
-    if (!interview) {
-      return next(
-        new AppError("No active session found with the provided ID", 404),
-      );
-    }
 
-    if (interview.status === "completed") {
-      return next(
-        new AppError(
-          "This interview session has already been evaluated and closed",
-          400,
-        ),
-      );
-    }
+    return res.status(202).json({
+      status: "success",
+      message:
+        "Interview completed. Evaluation is being processed.",
+      data: result,
+    });
 
-  
-    if (interview.status !== "active") {
-      return next(new AppError("Interview session is not active", 400));
-    }
+  } catch (error) {
+    console.error(
+      "❌ End Interview Error:",
+      error,
+    );
 
-    if (!interview.answers || interview.answers.length === 0) {
-      return next(
-        new AppError(
-          "Cannot evaluate an interview session with zero submissions",
-          400,
-        ),
-      );
-    }
-
-    if (interview.answers.length !== interview.questions.length) {
-      return next(
-        new AppError(
-          `Interview is incomplete. Expected ${interview.questions.length} answers but received ${interview.answers.length}.`,
-          400,
-        ),
-      );
-    }
-
- 
- const qaPayload = interview.answers.map((item) => ({
-  questionIndex: item.questionIndex,
-  questionText: item.questionText,
-  userAnswer: item.userAnswer,
-   }));
-
- console.log("🚀 Starting AI interview evaluation...");
-
-
-// Close interview immediately
-
-// Close interview immediately
-interview.status = "completed";
-
-interview.evaluation = interview.evaluation || {};
-interview.evaluation.evaluationStatus = "processing";
-
-await interview.save();
-// Send response immediately
-
- res.status(202).json({
-  status: "success",
-  message: "Interview completed. Evaluation is being processed.",
-  data: {
-    status: interview.status,
-    evaluationStatus: interview.evaluation.evaluationStatus,
-  },
-});
-
-
-    // Run AI evaluation in background
-
-   evaluateInterviewSession(qaPayload)
-  .then(async (aiEvaluationReport) => {
-    console.log("✅ AI evaluation completed");
-
-    const validScore = (score) =>
-      typeof score === "number" && score >= 0 && score <= 10;
-
-    const isValidEvaluation =
-      aiEvaluationReport &&
-      validScore(aiEvaluationReport.overallScore) &&
-      validScore(aiEvaluationReport.technicalScore) &&
-      validScore(aiEvaluationReport.communicationScore) &&
-      validScore(aiEvaluationReport.problemSolvingScore) &&
-      Array.isArray(aiEvaluationReport.strengths) &&
-      Array.isArray(aiEvaluationReport.weaknesses) &&
-      Array.isArray(aiEvaluationReport.recommendedTopics) &&
-      Array.isArray(aiEvaluationReport.questionWiseEvaluation) &&
-      aiEvaluationReport.questionWiseEvaluation.length ===
-        interview.questions.length;
-
-    if (!isValidEvaluation) {
-      console.error("❌ Invalid AI Evaluation:", aiEvaluationReport);
-  interview.evaluation = interview.evaluation || {};
-     interview.evaluation.evaluationStatus = "failed";
-await interview.save();
-      return;
-    }
-interview.evaluation = {...aiEvaluationReport,
-  evaluationStatus: "completed",
-};
-
-await interview.save();
-    console.log(" Evaluation saved successfully");
-
-    
-io.to(`interview:${interviewId}`).emit("evaluation-completed", {
-  interviewId,
-  evaluation: interview.evaluation,
-});
-  })
-  .catch(async (error) => {
-    console.error(" Background AI Evaluation Error:", error);
-
-    interview.evaluation = interview.evaluation || {};
-
-interview.evaluation.evaluationStatus = "failed";
-    await interview.save();
-  })
-    } catch (error) {
-    console.error(" End Interview Error:", error);
-    return next(error);
+    return next(
+      new AppError(
+        error.message || "Unable to complete interview",
+        400,
+      ),
+    );
   }
 };
-
 
 
 // GET ALL INTERVIEWS
@@ -913,36 +804,24 @@ export const getInterviewReport = async (req, res, next) => {
     const { interviewId } = req.params;
 
     if (!interviewId) {
-      return next(new AppError("Interview ID is required", 400));
+      return next(
+        new AppError("Interview ID is required", 400)
+      );
     }
 
- const interview = await Interview.findOne({
-  _id: interviewId,
-  userId: req.user.id,
-   "evaluation.evaluationStatus": "completed",
-}).select(
-  "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt",
-);
+    const interview = await Interview.findOne({
+      _id: interviewId,
+      userId: req.user.id,
+      "evaluation.evaluationStatus": "completed",
+    }).select(
+      "questions answers evaluation status jobTitle experienceLevel questionsSources createdAt"
+    );
 
-if (!interview) {
-  return next(new AppError("Interview report not found", 404));
-}
-
-// LOG YAHAN LAGAO - check se pehle
-console.log("REPORT DEBUG:", {
-  interviewId,
-  evaluation: interview.evaluation,
-  status: interview.status,
-});
-
-if (interview.evaluation?.evaluationStatus !== "completed") {
-  return next(
-    new AppError(
-      `Interview evaluation is still ${interview.evaluation?.evaluationStatus || "not started"}`,
-      400
-    )
-  );
-}
+    if (!interview) {
+      return next(
+        new AppError("Interview report not found", 404)
+      );
+    }
 
     return res.status(200).json({
       status: "success",
@@ -952,7 +831,7 @@ if (interview.evaluation?.evaluationStatus !== "completed") {
       },
     });
   } catch (error) {
-    console.error(" Get Interview Report Error:", error);
+    console.error("Get Interview Report Error:", error);
     return next(error);
   }
 };
